@@ -2,6 +2,13 @@
 
 A strategy to use and implement OAuth2 framework for authentication with federated services like Google, Facebook, GitHub, etc.
 
+## Supported runtimes
+
+| Runtime    | Has Support |
+| ---------- | ----------- |
+| Node.js    | ✅          |
+| Cloudflare | ✅          |
+
 ## How to use
 
 ### Directly
