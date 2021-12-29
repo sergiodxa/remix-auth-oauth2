@@ -171,10 +171,12 @@ describe(OAuth2Strategy, () => {
     }
   });
 
-  test("should call verify with the access token, refresh token, extra params and user profile", async () => {
+  test("should call verify with the access token, refresh token, extra params, user profile and context", async () => {
     let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
+
     let session = await sessionStorage.getSession();
     session.set("oauth2:state", "random-state");
+
     let request = new Request(
       "https://example.com/callback?state=random-state&code=random-code",
       {
@@ -190,8 +192,11 @@ describe(OAuth2Strategy, () => {
       })
     );
 
+    let context = { test: "it works" };
+
     await strategy.authenticate(request, sessionStorage, {
       sessionKey: "user",
+      context,
     });
 
     let [url, mockRequest] = fetchMock.mock.calls[0];
@@ -214,6 +219,7 @@ describe(OAuth2Strategy, () => {
       refreshToken: "random-refresh-token",
       extraParams: { id_token: "random.id.token" },
       profile: { provider: "oauth2" },
+      context,
     } as OAuth2StrategyVerifyParams<OAuth2Profile, { id_token: string }>);
   });
 
