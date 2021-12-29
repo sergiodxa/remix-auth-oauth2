@@ -27,10 +27,16 @@ authenticator.use(
       clientSecret: process.env.CLIENT_SECRET,
       callbackURL: "https://example.app/auth/callback",
     },
-    async ({ accessToken, refreshToken, extraParams, profile }) => {
+    async ({ accessToken, refreshToken, extraParams, profile, context }) => {
       // here you can use the params above to get the user and return it
       // what you do inside this and how you find the user is up to you
-      return await getUser(accessToken, refreshToken, extraParams, profile);
+      return await getUser(
+        accessToken,
+        refreshToken,
+        extraParams,
+        profile,
+        context
+      );
     }
   ),
   // this is optional, but if you setup more than one OAuth2 instance you will

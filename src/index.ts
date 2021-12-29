@@ -1,4 +1,9 @@
-import { json, redirect, SessionStorage } from "@remix-run/server-runtime";
+import {
+  AppLoadContext,
+  json,
+  redirect,
+  SessionStorage,
+} from "@remix-run/server-runtime";
 import {
   AuthenticateOptions,
   Strategy,
@@ -38,6 +43,7 @@ export interface OAuth2StrategyVerifyParams<
   refreshToken: string;
   extraParams: ExtraParams;
   profile: Profile;
+  context?: AppLoadContext;
 }
 
 /**
@@ -77,8 +83,8 @@ export interface OAuth2StrategyVerifyParams<
  *     clientSecret: 'shhh-its-a-secret'
  *     callbackURL: 'https://www.example.net/auth/example/callback'
  *   },
- *   (accessToken, refreshToken, profile) => {
- *     return User.findOrCreate(...);
+ *   async ({ accessToken, refreshToken, profile }) => {
+ *     return await User.findOrCreate(...);
  *   }
  * ));
  */
@@ -173,6 +179,7 @@ export class OAuth2Strategy<
         refreshToken,
         extraParams,
         profile,
+        context: options.context,
       });
     } catch (error) {
       let message = (error as Error).message;
