@@ -114,7 +114,25 @@ describe(OAuth2Strategy, () => {
   test("should throw if state is not on the callback URL params", async () => {
     let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
     let request = new Request("https://example.com/callback");
-    let response = json({ message: "Missing state." }, { status: 400 });
+    let response = json({ message: "Missing state on URL." }, { status: 400 });
+
+    try {
+      await strategy.authenticate(request, sessionStorage, {
+        sessionKey: "user",
+      });
+    } catch (error) {
+      if (!(error instanceof Response)) throw error;
+      expect(error).toEqual(response);
+    }
+  });
+
+  test("should throw if state is not on the session", async () => {
+    let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
+    let request = new Request("https://example.com/callback?state=value");
+    let response = json(
+      { message: "Missing state on session." },
+      { status: 400 }
+    );
 
     try {
       await strategy.authenticate(request, sessionStorage, {
