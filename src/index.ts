@@ -4,12 +4,15 @@ import {
   redirect,
   SessionStorage,
 } from "@remix-run/server-runtime";
+import createDebug from "debug";
 import {
   AuthenticateOptions,
   Strategy,
   StrategyVerifyCallback,
 } from "remix-auth";
 import { v4 as uuid } from "uuid";
+
+let debug = createDebug("OAuth2Strategy");
 
 export interface OAuth2Profile {
   provider: string;
@@ -123,6 +126,7 @@ export class OAuth2Strategy<
     sessionStorage: SessionStorage,
     options: AuthenticateOptions
   ): Promise<User> {
+    debug("Request URL", request.url);
     let url = new URL(request.url);
     let session = await sessionStorage.getSession(
       request.headers.get("Cookie")
@@ -132,15 +136,19 @@ export class OAuth2Strategy<
 
     // User is already authenticated
     if (user) {
-      if (options.successRedirect) throw redirect(options.successRedirect);
-      else return user;
+      debug("User is authenticated");
+      return this.success(user, request, sessionStorage, options);
     }
 
     let callbackURL = this.getCallbackURL(url);
 
+    debug("Callback URL", callbackURL);
+
     // Redirect the user to the callback URL
     if (url.pathname !== callbackURL.pathname) {
+      debug("Redirecting to callback URL");
       let state = this.generateState();
+      debug("State", state);
       session.set(this.sessionStateKey, state);
       throw redirect(this.getAuthorizationURL(request, state).toString(), {
         headers: { "Set-Cookie": await sessionStorage.commitSession(session) },
@@ -149,10 +157,19 @@ export class OAuth2Strategy<
 
     // Validations of the callback URL params
 
-    let state = url.searchParams.get("state");
-    if (!state) throw json({ message: "Missing state." }, { status: 400 });
+    let stateUrl = url.searchParams.get("state");
+    debug("State from URL", stateUrl);
+    if (!stateUrl)
+      throw json({ message: "Missing state on URL." }, { status: 400 });
 
-    if (session.get(this.sessionStateKey) === state) {
+    let stateSession = session.get(this.sessionStateKey);
+    debug("State from session", stateSession);
+    if (!stateSession) {
+      throw json({ message: "Missing state on session." }, { status: 400 });
+    }
+
+    if (stateSession === stateUrl) {
+      debug("State is valid");
       session.unset(this.sessionStateKey);
     } else throw json({ message: "State doesn't match." }, { status: 400 });
 
@@ -182,30 +199,13 @@ export class OAuth2Strategy<
         context: options.context,
       });
     } catch (error) {
+      debug("Failed to verify user", error);
       let message = (error as Error).message;
-      // if we don't have a failureRedirect, we'll just throw a 401 error
-      if (!options.failureRedirect) {
-        throw json({ message }, { status: 401 });
-      }
-      // if we do have a failureRedirect, we'll redirect to it and set the
-      // error on the session with the key oauth2:error
-      session.set("oauth2:error", { message });
-      let cookie = await sessionStorage.commitSession(session);
-      throw redirect(options.failureRedirect, {
-        headers: { "Set-Cookie": cookie },
-      });
+      return await this.failure(message, request, sessionStorage, options);
     }
 
-    // if a successRedirect is not provided, we'll just return the user
-    if (!options.successRedirect) return user;
-
-    // if we get the successRedirect, we'll set the user in the session and then
-    // redirect to the successRedirect URL
-    session.set(options.sessionKey, user);
-    let cookie = await sessionStorage.commitSession(session);
-    throw redirect(options.successRedirect, {
-      headers: { "Set-Cookie": cookie },
-    });
+    debug("User authenticated");
+    return await this.success(user, request, sessionStorage, options);
   }
 
   /**
