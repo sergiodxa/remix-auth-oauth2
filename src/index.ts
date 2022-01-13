@@ -142,7 +142,7 @@ export class OAuth2Strategy<
     if (url.pathname !== callbackURL.pathname) {
       let state = this.generateState();
       session.set(this.sessionStateKey, state);
-      throw redirect(this.getAuthorizationURL(state).toString(), {
+      throw redirect(this.getAuthorizationURL(request, state).toString(), {
         headers: { "Set-Cookie": await sessionStorage.commitSession(session) },
       });
     }
@@ -234,8 +234,8 @@ export class OAuth2Strategy<
    * strategies can override this function in order to populate these
    * parameters as required by the provider.
    */
-  protected authorizationParams(): URLSearchParams {
-    return new URLSearchParams();
+  protected authorizationParams(params: URLSearchParams): URLSearchParams {
+    return new URLSearchParams(params);
   }
 
   /**
@@ -277,8 +277,10 @@ export class OAuth2Strategy<
     return new URL(`${url.protocol}//${this.callbackURL}`);
   }
 
-  private getAuthorizationURL(state: string) {
-    let params = new URLSearchParams(this.authorizationParams());
+  private getAuthorizationURL(request: Request, state: string) {
+    let params = new URLSearchParams(
+      this.authorizationParams(new URL(request.url).searchParams)
+    );
     params.set("response_type", "code");
     params.set("client_id", this.clientID);
     params.set("redirect_uri", this.callbackURL);
