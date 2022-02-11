@@ -150,9 +150,15 @@ export class OAuth2Strategy<
       let state = this.generateState();
       debug("State", state);
       session.set(this.sessionStateKey, state);
-      throw redirect(this.getAuthorizationURL(request, state).toString(), {
-        headers: { "Set-Cookie": await sessionStorage.commitSession(session) },
-      });
+      let authorizationURL = options.context?.authorizationURL;
+      throw redirect(
+        this.getAuthorizationURL(request, state, authorizationURL).toString(),
+        {
+          headers: {
+            "Set-Cookie": await sessionStorage.commitSession(session),
+          },
+        }
+      );
     }
 
     // Validations of the callback URL params
@@ -182,8 +188,9 @@ export class OAuth2Strategy<
     params.set("grant_type", "authorization_code");
     params.set("redirect_uri", callbackURL.toString());
 
+    let tokenURL = options.context?.tokenURL;
     let { accessToken, refreshToken, extraParams } =
-      await this.fetchAccessToken(code, params);
+      await this.fetchAccessToken(code, params, tokenURL);
 
     // Get the profile
 
@@ -277,7 +284,11 @@ export class OAuth2Strategy<
     return new URL(`${url.protocol}//${this.callbackURL}`);
   }
 
-  private getAuthorizationURL(request: Request, state: string) {
+  private getAuthorizationURL(
+    request: Request,
+    state: string,
+    customAuthURL?: string
+  ) {
     let params = new URLSearchParams(
       this.authorizationParams(new URL(request.url).searchParams)
     );
@@ -286,7 +297,7 @@ export class OAuth2Strategy<
     params.set("redirect_uri", this.callbackURL);
     params.set("state", state);
 
-    let url = new URL(this.authorizationURL);
+    let url = new URL(customAuthURL || this.authorizationURL);
     url.search = params.toString();
 
     return url;
@@ -301,7 +312,8 @@ export class OAuth2Strategy<
    */
   private async fetchAccessToken(
     code: string,
-    params: URLSearchParams
+    params: URLSearchParams,
+    customTokenUrl?: string
   ): Promise<{
     accessToken: string;
     refreshToken: string;
@@ -316,7 +328,7 @@ export class OAuth2Strategy<
       params.set("code", code);
     }
 
-    let response = await fetch(this.tokenURL, {
+    let response = await fetch(customTokenUrl || this.tokenURL, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: params,
