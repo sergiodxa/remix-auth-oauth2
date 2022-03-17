@@ -283,7 +283,10 @@ export class OAuth2Strategy<
     );
     params.set("response_type", "code");
     params.set("client_id", this.clientID);
-    params.set("redirect_uri", this.callbackURL);
+    params.set(
+      "redirect_uri",
+      this.getCallbackURL(new URL(request.url)).toString()
+    );
     params.set("state", state);
 
     let url = new URL(this.authorizationURL);
