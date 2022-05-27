@@ -55,7 +55,6 @@
   },
   "dependencies": {
     "debug": "^4.3.4",
-    "react-dom": "^18.1.0",
     "remix-auth": "^3.2.2",
     "uuid": "^8.3.2"
   }
