@@ -56,6 +56,33 @@ describe(OAuth2Strategy, () => {
     expect(user).toEqual({ id: "123" });
   });
 
+  test("if user is already in the session, but allow re-auth is true, ", async () => {
+    let strategy = new OAuth2Strategy<User, TestProfile>(
+      { ...options, allowReauth: true },
+      verify
+    );
+
+    let session = await sessionStorage.getSession();
+    session.set("user", { id: "123" });
+
+    let request = new Request("https://example.com/login", {
+      headers: { cookie: await sessionStorage.commitSession(session) },
+    });
+
+    try {
+      await strategy.authenticate(request, sessionStorage, {
+        sessionKey: "user",
+      });
+    } catch (error) {
+      if (!(error instanceof Response)) throw error;
+
+      let redirect = new URL(error.headers.get("Location") as string);
+
+      expect(error.status).toBe(302);
+      expect(redirect.pathname).toBe("/authorize");
+    }
+  });
+
   test("if user is already in the session and successRedirect is set throw a redirect", async () => {
     let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
 
