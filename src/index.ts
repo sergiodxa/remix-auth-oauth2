@@ -295,7 +295,7 @@ export class OAuth2Strategy<
     return url;
   }
 
-  private generateState() {
+  protected generateState() {
     return uuid();
   }
 
