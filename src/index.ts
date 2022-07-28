@@ -36,6 +36,7 @@ export interface OAuth2StrategyOptions {
   clientID: string;
   clientSecret: string;
   callbackURL: string;
+  responseType: string;
 }
 
 export interface OAuth2StrategyVerifyParams<
@@ -103,6 +104,7 @@ export class OAuth2Strategy<
   protected clientID: string;
   protected clientSecret: string;
   protected callbackURL: string;
+  protected responseType: string;
 
   private sessionStateKey = "oauth2:state";
 
@@ -119,6 +121,7 @@ export class OAuth2Strategy<
     this.clientID = options.clientID;
     this.clientSecret = options.clientSecret;
     this.callbackURL = options.callbackURL;
+    this.responseType = options.responseType;
   }
 
   async authenticate(
@@ -281,7 +284,7 @@ export class OAuth2Strategy<
     let params = new URLSearchParams(
       this.authorizationParams(new URL(request.url).searchParams)
     );
-    params.set("response_type", "code");
+    params.set("response_type", this.responseType);
     params.set("client_id", this.clientID);
     params.set(
       "redirect_uri",
