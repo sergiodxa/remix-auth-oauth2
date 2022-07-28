@@ -30,13 +30,21 @@ export interface OAuth2Profile {
   photos?: Array<{ value: string }>;
 }
 
+type ResponseType =
+  | "id_token"
+  | "token"
+  | "id_token token"
+  | "code"
+  | "code id_token"
+  | "code id_token token";
+
 export interface OAuth2StrategyOptions {
   authorizationURL: string;
   tokenURL: string;
   clientID: string;
   clientSecret: string;
   callbackURL: string;
-  responseType?: "id_token" | "token" | "id_token token" | "code" | "code id_token" | "code id_token token";
+  responseType?: ResponseType;
 }
 
 export interface OAuth2StrategyVerifyParams<
@@ -104,7 +112,7 @@ export class OAuth2Strategy<
   protected clientID: string;
   protected clientSecret: string;
   protected callbackURL: string;
-  protected responseType: "id_token" | "token" | "id_token token" | "code" | "code id_token" | "code id_token token";
+  protected responseType: ResponseType;
 
   private sessionStateKey = "oauth2:state";
 
