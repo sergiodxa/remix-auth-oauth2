@@ -104,7 +104,7 @@ export class OAuth2Strategy<
   protected clientID: string;
   protected clientSecret: string;
   protected callbackURL: string;
-  protected responseType: string;
+  protected responseType: "id_token" | "token" | "id_token token" | "code" | "code id_token" | "code id_token token";
 
   private sessionStateKey = "oauth2:state";
 
