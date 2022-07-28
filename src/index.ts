@@ -36,7 +36,7 @@ export interface OAuth2StrategyOptions {
   clientID: string;
   clientSecret: string;
   callbackURL: string;
-  responseType?: string;
+  responseType?: "id_token" | "token" | "id_token token" | "code" | "code id_token" | "code id_token token";
 }
 
 export interface OAuth2StrategyVerifyParams<
