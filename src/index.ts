@@ -36,7 +36,7 @@ export interface OAuth2StrategyOptions {
   clientID: string;
   clientSecret: string;
   callbackURL: string;
-  responseType: string;
+  responseType?: string;
 }
 
 export interface OAuth2StrategyVerifyParams<
@@ -121,7 +121,7 @@ export class OAuth2Strategy<
     this.clientID = options.clientID;
     this.clientSecret = options.clientSecret;
     this.callbackURL = options.callbackURL;
-    this.responseType = options.responseType;
+    this.responseType = options.responseType ?? "code";
   }
 
   async authenticate(
