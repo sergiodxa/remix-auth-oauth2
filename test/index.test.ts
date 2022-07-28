@@ -111,6 +111,26 @@ describe(OAuth2Strategy, () => {
     }
   });
 
+  test("should redirect to custom authorization if request is not the callback", async () => {
+    let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
+
+    let request = new Request("https://example.com/login");
+
+    try {
+      await strategy.authenticate(request, sessionStorage, {
+        sessionKey: "user",
+        context: {
+          authorizationURL: "https://other.com/customauth",
+        },
+      });
+    } catch (error) {
+      if (!(error instanceof Response)) throw error;
+
+      let redirect = new URL(error.headers.get("Location") as string);
+      expect(redirect.pathname).toBe("/customauth");
+    }
+  });
+
   test("should throw if state is not on the callback URL params", async () => {
     let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
     let request = new Request("https://example.com/callback");
@@ -239,6 +259,41 @@ describe(OAuth2Strategy, () => {
       profile: { provider: "oauth2" },
       context,
     } as OAuth2StrategyVerifyParams<OAuth2Profile, { id_token: string }>);
+  });
+
+  test("custom token url is called", async () => {
+    let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
+
+    let session = await sessionStorage.getSession();
+    session.set("oauth2:state", "random-state");
+
+    let request = new Request(
+      "https://example.com/callback?state=random-state&code=random-code",
+      {
+        headers: { cookie: await sessionStorage.commitSession(session) },
+      }
+    );
+
+    fetchMock.once(
+      JSON.stringify({
+        access_token: "random-access-token",
+        refresh_token: "random-refresh-token",
+        id_token: "random.id.token",
+      })
+    );
+
+    let context = {
+      tokenURL: "https://other.com/fetch_token",
+    };
+
+    await strategy.authenticate(request, sessionStorage, {
+      sessionKey: "user",
+      context,
+    });
+
+    let [url] = fetchMock.mock.calls[0];
+
+    expect(url).toBe(context.tokenURL);
   });
 
   test("should return the result of verify", async () => {
