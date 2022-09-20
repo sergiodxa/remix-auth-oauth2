@@ -30,12 +30,21 @@ export interface OAuth2Profile {
   photos?: Array<{ value: string }>;
 }
 
+type ResponseType =
+  | "id_token"
+  | "token"
+  | "id_token token"
+  | "code"
+  | "code id_token"
+  | "code id_token token";
+
 export interface OAuth2StrategyOptions {
   authorizationURL: string;
   tokenURL: string;
   clientID: string;
   clientSecret: string;
   callbackURL: string;
+  responseType?: ResponseType;
 }
 
 export interface OAuth2StrategyVerifyParams<
@@ -103,6 +112,7 @@ export class OAuth2Strategy<
   protected clientID: string;
   protected clientSecret: string;
   protected callbackURL: string;
+  protected responseType: ResponseType;
 
   private sessionStateKey = "oauth2:state";
 
@@ -119,6 +129,7 @@ export class OAuth2Strategy<
     this.clientID = options.clientID;
     this.clientSecret = options.clientSecret;
     this.callbackURL = options.callbackURL;
+    this.responseType = options.responseType ?? "code";
   }
 
   async authenticate(
@@ -281,9 +292,12 @@ export class OAuth2Strategy<
     let params = new URLSearchParams(
       this.authorizationParams(new URL(request.url).searchParams)
     );
-    params.set("response_type", "code");
+    params.set("response_type", this.responseType);
     params.set("client_id", this.clientID);
-    params.set("redirect_uri", this.callbackURL);
+    params.set(
+      "redirect_uri",
+      this.getCallbackURL(new URL(request.url)).toString()
+    );
     params.set("state", state);
 
     let url = new URL(this.authorizationURL);
