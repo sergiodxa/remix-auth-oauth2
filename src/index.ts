@@ -16,7 +16,7 @@ let debug = createDebug("OAuth2Strategy");
 
 export interface OAuth2Profile {
   provider: string;
-  id?: string;
+  id?: string | number;
   displayName?: string;
   name?: {
     familyName?: string;
