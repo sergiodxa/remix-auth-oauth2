@@ -11,6 +11,16 @@ A strategy to use and implement OAuth2 framework for authentication with federat
 
 ## How to use
 
+### Installation
+
+```bash
+npm install remix-auth-oauth2
+# or
+yarn add remix-auth-oauth2
+# or
+pnpm add remix-auth-oauth2
+```
+
 ### Directly
 
 You can use this strategy by adding it to your authenticator instance and configuring the correct endpoints.
