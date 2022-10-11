@@ -14,11 +14,7 @@ A strategy to use and implement OAuth2 framework for authentication with federat
 ### Installation
 
 ```bash
-npm install remix-auth-oauth2
-# or
-yarn add remix-auth-oauth2
-# or
-pnpm add remix-auth-oauth2
+npm add remix-auth-oauth2
 ```
 
 ### Directly
