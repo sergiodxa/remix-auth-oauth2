@@ -45,6 +45,7 @@ export interface OAuth2StrategyOptions {
   clientSecret: string;
   callbackURL: string;
   responseType?: ResponseType;
+  useBasicAuthenticationHeader?: boolean;
 }
 
 export interface OAuth2StrategyVerifyParams<
@@ -113,6 +114,7 @@ export class OAuth2Strategy<
   protected clientSecret: string;
   protected callbackURL: string;
   protected responseType: ResponseType;
+  protected useBasicAuthenticationHeader: boolean;
 
   private sessionStateKey = "oauth2:state";
 
@@ -130,6 +132,8 @@ export class OAuth2Strategy<
     this.clientSecret = options.clientSecret;
     this.callbackURL = options.callbackURL;
     this.responseType = options.responseType ?? "code";
+    this.useBasicAuthenticationHeader =
+      options.useBasicAuthenticationHeader ?? false;
   }
 
   async authenticate(
@@ -321,8 +325,23 @@ export class OAuth2Strategy<
     refreshToken: string;
     extraParams: ExtraParams;
   }> {
-    params.set("client_id", this.clientID);
-    params.set("client_secret", this.clientSecret);
+    let headers: HeadersInit = {
+      "Content-Type": "application/x-www-form-urlencoded",
+    };
+
+    if (this.useBasicAuthenticationHeader) {
+      const b64EncodedCredentials = Buffer.from(
+        `${this.clientID}:${this.clientSecret}`
+      ).toString("base64");
+
+      headers = {
+        ...headers,
+        Authorization: `Basic ${b64EncodedCredentials}`,
+      };
+    } else {
+      params.set("client_id", this.clientID);
+      params.set("client_secret", this.clientSecret);
+    }
 
     if (params.get("grant_type") === "refresh_token") {
       params.set("refresh_token", code);
@@ -332,7 +351,7 @@ export class OAuth2Strategy<
 
     let response = await fetch(this.tokenURL, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers,
       body: params,
     });
 
