@@ -24,15 +24,16 @@
     "README.md"
   ],
   "peerDependencies": {
-    "@remix-run/server-runtime": "^1.0.0"
+    "@remix-run/server-runtime": "^1.0.0",
+    "remix-auth": "^3.2.2"
   },
   "devDependencies": {
     "@babel/core": "^7.17.10",
     "@babel/preset-env": "^7.17.10",
     "@babel/preset-react": "^7.16.7",
     "@babel/preset-typescript": "^7.16.7",
-    "@remix-run/node": "^1.4.3",
-    "@remix-run/react": "^1.4.3",
+    "@remix-run/node": "^1.0.0",
+    "@remix-run/react": "^1.0.0",
     "@remix-run/server-runtime": "^1.0.0",
     "@types/debug": "^4.1.7",
     "@types/jest": "^27.5.0",
@@ -49,13 +50,15 @@
     "jest": "^28.1.0",
     "jest-fetch-mock": "^3.0.3",
     "prettier": "^2.6.2",
-    "react": "^18.1.0",
+    "react": "^17.0.0",
+    "react-dom": "^17.0.0",
+    "remix-auth": "^3.4.0",
     "ts-node": "^10.7.0",
     "typescript": "^4.6.4"
   },
   "dependencies": {
     "debug": "^4.3.4",
-    "remix-auth": "^3.2.2",
+    "remix-auth": "^3.4.0",
     "uuid": "^8.3.2"
   }
 }
