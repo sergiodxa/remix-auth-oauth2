@@ -1,5 +1,6 @@
 import { createCookieSessionStorage, json } from "@remix-run/node";
 import fetchMock, { enableFetchMocks } from "jest-fetch-mock";
+import { AuthenticateOptions, AuthorizationError } from "remix-auth";
 import {
   OAuth2Profile,
   OAuth2Strategy,
@@ -7,6 +8,13 @@ import {
 } from "../src";
 
 enableFetchMocks();
+
+const BASE_OPTIONS: AuthenticateOptions = {
+  name: "form",
+  sessionKey: "user",
+  sessionErrorKey: "error",
+  sessionStrategyKey: "strategy",
+};
 
 describe(OAuth2Strategy, () => {
   let verify = jest.fn();
@@ -49,9 +57,11 @@ describe(OAuth2Strategy, () => {
       headers: { cookie: await sessionStorage.commitSession(session) },
     });
 
-    let user = await strategy.authenticate(request, sessionStorage, {
-      sessionKey: "user",
-    });
+    let user = await strategy.authenticate(
+      request,
+      sessionStorage,
+      BASE_OPTIONS
+    );
 
     expect(user).toEqual({ id: "123" });
   });
@@ -68,12 +78,12 @@ describe(OAuth2Strategy, () => {
 
     try {
       await strategy.authenticate(request, sessionStorage, {
-        sessionKey: "user",
-        successRedirect: "/dashboar",
+        ...BASE_OPTIONS,
+        successRedirect: "/dashboard",
       });
     } catch (error) {
       if (!(error instanceof Response)) throw error;
-      expect(error.headers.get("Location")).toBe("/dashboar");
+      expect(error.headers.get("Location")).toBe("/dashboard");
     }
   });
 
@@ -83,9 +93,7 @@ describe(OAuth2Strategy, () => {
     let request = new Request("https://example.com/login");
 
     try {
-      await strategy.authenticate(request, sessionStorage, {
-        sessionKey: "user",
-      });
+      await strategy.authenticate(request, sessionStorage, BASE_OPTIONS);
     } catch (error) {
       if (!(error instanceof Response)) throw error;
 
@@ -117,9 +125,7 @@ describe(OAuth2Strategy, () => {
     let response = json({ message: "Missing state on URL." }, { status: 400 });
 
     try {
-      await strategy.authenticate(request, sessionStorage, {
-        sessionKey: "user",
-      });
+      await strategy.authenticate(request, sessionStorage, BASE_OPTIONS);
     } catch (error) {
       if (!(error instanceof Response)) throw error;
       expect(error).toEqual(response);
@@ -135,9 +141,7 @@ describe(OAuth2Strategy, () => {
     );
 
     try {
-      await strategy.authenticate(request, sessionStorage, {
-        sessionKey: "user",
-      });
+      await strategy.authenticate(request, sessionStorage, BASE_OPTIONS);
     } catch (error) {
       if (!(error instanceof Response)) throw error;
       expect(error).toEqual(response);
@@ -159,9 +163,7 @@ describe(OAuth2Strategy, () => {
     let response = json({ message: "State doesn't match." }, { status: 400 });
 
     try {
-      await strategy.authenticate(request, sessionStorage, {
-        sessionKey: "user",
-      });
+      await strategy.authenticate(request, sessionStorage, BASE_OPTIONS);
     } catch (error) {
       if (!(error instanceof Response)) throw error;
       expect(error).toEqual(response);
@@ -180,9 +182,7 @@ describe(OAuth2Strategy, () => {
     );
     let response = json({ message: "Missing code." }, { status: 400 });
     try {
-      await strategy.authenticate(request, sessionStorage, {
-        sessionKey: "user",
-      });
+      await strategy.authenticate(request, sessionStorage, BASE_OPTIONS);
     } catch (error) {
       if (!(error instanceof Response)) throw error;
       expect(error).toEqual(response);
@@ -213,7 +213,7 @@ describe(OAuth2Strategy, () => {
     let context = { test: "it works" };
 
     await strategy.authenticate(request, sessionStorage, {
-      sessionKey: "user",
+      ...BASE_OPTIONS,
       context,
     });
 
@@ -265,9 +265,11 @@ describe(OAuth2Strategy, () => {
       })
     );
 
-    let response = await strategy.authenticate(request, sessionStorage, {
-      sessionKey: "user",
-    });
+    let response = await strategy.authenticate(
+      request,
+      sessionStorage,
+      BASE_OPTIONS
+    );
 
     expect(response).toEqual(user);
   });
@@ -298,7 +300,7 @@ describe(OAuth2Strategy, () => {
 
     try {
       await strategy.authenticate(request, sessionStorage, {
-        sessionKey: "user",
+        ...BASE_OPTIONS,
         successRedirect: "/",
       });
     } catch (error) {
@@ -311,5 +313,113 @@ describe(OAuth2Strategy, () => {
       expect(error.headers.get("Location")).toBe("/");
       expect(session.get("user")).toEqual(user);
     }
+  });
+
+  test("should pass error as cause on failure", async () => {
+    verify.mockRejectedValueOnce(new TypeError("Invalid credentials"));
+
+    let strategy = new OAuth2Strategy(options, verify);
+
+    let session = await sessionStorage.getSession();
+    session.set("oauth2:state", "random-state");
+
+    let request = new Request(
+      "https://example.com/callback?state=random-state&code=random-code",
+      {
+        headers: { cookie: await sessionStorage.commitSession(session) },
+      }
+    );
+
+    fetchMock.once(
+      JSON.stringify({
+        access_token: "random-access-token",
+        refresh_token: "random-refresh-token",
+        id_token: "random.id.token",
+      })
+    );
+
+    let result = await strategy
+      .authenticate(request, sessionStorage, {
+        ...BASE_OPTIONS,
+        throwOnError: true,
+      })
+      .catch((error) => error);
+
+    expect(result).toEqual(new AuthorizationError("Invalid credentials"));
+    expect((result as AuthorizationError).cause).toEqual(
+      new TypeError("Invalid credentials")
+    );
+  });
+
+  test("should pass generate error from string on failure", async () => {
+    verify.mockRejectedValueOnce("Invalid credentials");
+
+    let strategy = new OAuth2Strategy(options, verify);
+
+    let session = await sessionStorage.getSession();
+    session.set("oauth2:state", "random-state");
+
+    let request = new Request(
+      "https://example.com/callback?state=random-state&code=random-code",
+      {
+        headers: { cookie: await sessionStorage.commitSession(session) },
+      }
+    );
+
+    fetchMock.once(
+      JSON.stringify({
+        access_token: "random-access-token",
+        refresh_token: "random-refresh-token",
+        id_token: "random.id.token",
+      })
+    );
+
+    let result = await strategy
+      .authenticate(request, sessionStorage, {
+        ...BASE_OPTIONS,
+        throwOnError: true,
+      })
+      .catch((error) => error);
+
+    expect(result).toEqual(new AuthorizationError("Invalid credentials"));
+    expect((result as AuthorizationError).cause).toEqual(
+      new TypeError("Invalid credentials")
+    );
+  });
+
+  test("should create Unknown error if thrown value is not Error or string", async () => {
+    verify.mockRejectedValueOnce({ message: "Invalid email address" });
+
+    let strategy = new OAuth2Strategy(options, verify);
+
+    let session = await sessionStorage.getSession();
+    session.set("oauth2:state", "random-state");
+
+    let request = new Request(
+      "https://example.com/callback?state=random-state&code=random-code",
+      {
+        headers: { cookie: await sessionStorage.commitSession(session) },
+      }
+    );
+
+    fetchMock.once(
+      JSON.stringify({
+        access_token: "random-access-token",
+        refresh_token: "random-refresh-token",
+        id_token: "random.id.token",
+      })
+    );
+
+    let result = await strategy
+      .authenticate(request, sessionStorage, {
+        ...BASE_OPTIONS,
+        throwOnError: true,
+      })
+      .catch((error) => error);
+
+    expect(result).toEqual(new AuthorizationError("Unknown error"));
+    expect((result as AuthorizationError).cause).toEqual(
+      new Error(JSON.stringify({ message: "Invalid email address" }, null, 2))
+    );
   });
 });

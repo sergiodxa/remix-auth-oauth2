@@ -211,8 +211,31 @@ export class OAuth2Strategy<
       });
     } catch (error) {
       debug("Failed to verify user", error);
-      let message = (error as Error).message;
-      return await this.failure(message, request, sessionStorage, options);
+      if (error instanceof Error) {
+        return await this.failure(
+          error.message,
+          request,
+          sessionStorage,
+          options,
+          error
+        );
+      }
+      if (typeof error === "string") {
+        return await this.failure(
+          error,
+          request,
+          sessionStorage,
+          options,
+          new Error(error)
+        );
+      }
+      return await this.failure(
+        "Unknown error",
+        request,
+        sessionStorage,
+        options,
+        new Error(JSON.stringify(error, null, 2))
+      );
     }
 
     debug("User authenticated");
