@@ -122,14 +122,11 @@ describe(OAuth2Strategy, () => {
   test("should throw if state is not on the callback URL params", async () => {
     let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
     let request = new Request("https://example.com/callback");
-    let response = json({ message: "Missing state on URL." }, { status: 400 });
+    let response = json({ message: "Missing state on URL." }, { status: 401 });
 
-    try {
-      await strategy.authenticate(request, sessionStorage, BASE_OPTIONS);
-    } catch (error) {
-      if (!(error instanceof Response)) throw error;
-      expect(error).toEqual(response);
-    }
+    await expect(
+      strategy.authenticate(request, sessionStorage, BASE_OPTIONS)
+    ).rejects.toEqual(response);
   });
 
   test("should throw if state is not on the session", async () => {
@@ -137,15 +134,12 @@ describe(OAuth2Strategy, () => {
     let request = new Request("https://example.com/callback?state=value");
     let response = json(
       { message: "Missing state on session." },
-      { status: 400 }
+      { status: 401 }
     );
 
-    try {
-      await strategy.authenticate(request, sessionStorage, BASE_OPTIONS);
-    } catch (error) {
-      if (!(error instanceof Response)) throw error;
-      expect(error).toEqual(response);
-    }
+    await expect(
+      strategy.authenticate(request, sessionStorage, BASE_OPTIONS)
+    ).rejects.toEqual(response);
   });
 
   test("should throw if the state in params doesn't match the state in session", async () => {
@@ -160,14 +154,11 @@ describe(OAuth2Strategy, () => {
         headers: { cookie: await sessionStorage.commitSession(session) },
       }
     );
-    let response = json({ message: "State doesn't match." }, { status: 400 });
+    let response = json({ message: "State doesn't match." }, { status: 401 });
 
-    try {
-      await strategy.authenticate(request, sessionStorage, BASE_OPTIONS);
-    } catch (error) {
-      if (!(error instanceof Response)) throw error;
-      expect(error).toEqual(response);
-    }
+    await expect(
+      strategy.authenticate(request, sessionStorage, BASE_OPTIONS)
+    ).rejects.toEqual(response);
   });
 
   test("should throw if code is not on the callback URL params", async () => {
@@ -180,13 +171,11 @@ describe(OAuth2Strategy, () => {
         headers: { cookie: await sessionStorage.commitSession(session) },
       }
     );
-    let response = json({ message: "Missing code." }, { status: 400 });
-    try {
-      await strategy.authenticate(request, sessionStorage, BASE_OPTIONS);
-    } catch (error) {
-      if (!(error instanceof Response)) throw error;
-      expect(error).toEqual(response);
-    }
+    let response = json({ message: "Missing code." }, { status: 401 });
+
+    await expect(
+      strategy.authenticate(request, sessionStorage, BASE_OPTIONS)
+    ).rejects.toEqual(response);
   });
 
   test("should call verify with the access token, refresh token, extra params, user profile and context", async () => {

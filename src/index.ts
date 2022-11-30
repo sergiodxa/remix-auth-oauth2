@@ -1,6 +1,5 @@
 import {
   AppLoadContext,
-  json,
   redirect,
   SessionStorage,
 } from "@remix-run/server-runtime";
@@ -170,38 +169,68 @@ export class OAuth2Strategy<
 
     let stateUrl = url.searchParams.get("state");
     debug("State from URL", stateUrl);
-    if (!stateUrl)
-      throw json({ message: "Missing state on URL." }, { status: 400 });
+    if (!stateUrl) {
+      return await this.failure(
+        "Missing state on URL.",
+        request,
+        sessionStorage,
+        options,
+        new Error("Missing state on URL.")
+      );
+    }
 
     let stateSession = session.get(this.sessionStateKey);
     debug("State from session", stateSession);
     if (!stateSession) {
-      throw json({ message: "Missing state on session." }, { status: 400 });
+      return await this.failure(
+        "Missing state on session.",
+        request,
+        sessionStorage,
+        options,
+        new Error("Missing state on session.")
+      );
     }
 
     if (stateSession === stateUrl) {
       debug("State is valid");
       session.unset(this.sessionStateKey);
-    } else throw json({ message: "State doesn't match." }, { status: 400 });
+    } else {
+      return await this.failure(
+        "State doesn't match.",
+        request,
+        sessionStorage,
+        options,
+        new Error("State doesn't match.")
+      );
+    }
 
     let code = url.searchParams.get("code");
-    if (!code) throw json({ message: "Missing code." }, { status: 400 });
+    if (!code) {
+      return await this.failure(
+        "Missing code.",
+        request,
+        sessionStorage,
+        options,
+        new Error("Missing code.")
+      );
+    }
 
-    // Get the access token
-
-    let params = new URLSearchParams(this.tokenParams());
-    params.set("grant_type", "authorization_code");
-    params.set("redirect_uri", callbackURL.toString());
-
-    let { accessToken, refreshToken, extraParams } =
-      await this.fetchAccessToken(code, params);
-
-    // Get the profile
-
-    let profile = await this.userProfile(accessToken, extraParams);
-
-    // Verify the user and return it, or redirect
     try {
+      // Get the access token
+
+      let params = new URLSearchParams(this.tokenParams());
+      params.set("grant_type", "authorization_code");
+      params.set("redirect_uri", callbackURL.toString());
+
+      let { accessToken, refreshToken, extraParams } =
+        await this.fetchAccessToken(code, params);
+
+      // Get the profile
+
+      let profile = await this.userProfile(accessToken, extraParams);
+
+      // Verify the user and return it, or redirect
+
       user = await this.verify({
         accessToken,
         refreshToken,
@@ -360,12 +389,8 @@ export class OAuth2Strategy<
     });
 
     if (!response.ok) {
-      try {
-        let body = await response.text();
-        throw new Response(body, { status: 401 });
-      } catch (error) {
-        throw new Response((error as Error).message, { status: 401 });
-      }
+      let body = await response.text();
+      throw body;
     }
 
     return await this.getAccessToken(response.clone() as unknown as Response);
