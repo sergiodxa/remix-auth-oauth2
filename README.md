@@ -51,6 +51,42 @@ authenticator.use(
 );
 ```
 
+### Dynamic redirects
+
+Sometimes it is desired, after the login, to redirect to the page which requested the authentication.
+
+This can be done by passing the `successRedirect` to the `authenticate` method when redirecting to auth provider:
+
+```ts
+// app/routes/auth/login.tsx
+import { type ActionArgs } from "@remix-run/node";
+import { authenticator } from "~/auth.server";
+
+export async function action({ request }: ActionArgs) {
+  const url = new URL(request.url);
+  const returnTo = url.searchParams.get("returnTo"); // This can be anything
+  return authenticator.authenticate("provider-name", request, {
+    successRedirect: returnTo || undefined,
+    failureRedirect: "/auth/login",
+  });
+}
+```
+
+Then when verifying callback, set the redirect url appropriately. The `redirectTo` is available as a parameter of `successRedirect` and `failureRedirect` functions.
+
+```ts
+// app/routes/auth/callback.tsx
+import { type LoaderArgs } from "@remix-run/node";
+import { authenticator } from "~/auth.server";
+
+export async function loader({ request }: LoaderArgs) {
+  return authenticator.authenticate("provider-name", request, {
+    successRedirect: (redirectTo) => redirectTo ?? "/dashboard",
+    failureRedirect: "/auth/login",
+  });
+}
+```
+
 ### Extending it
 
 You can use this strategy as a base class for another strategy using the OAuth2 framework. That way, you wouldn't need to implement the whole OAuth2 flow yourself.

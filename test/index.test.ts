@@ -16,6 +16,10 @@ const BASE_OPTIONS: AuthenticateOptions = {
   sessionStrategyKey: "strategy",
 };
 
+function encodeState(_nonce: string, redirectTo?: string) {
+  return Buffer.from(JSON.stringify({ _nonce, redirectTo })).toString("base64");
+}
+
 describe(OAuth2Strategy, () => {
   let verify = jest.fn();
   let sessionStorage = createCookieSessionStorage({
@@ -131,7 +135,9 @@ describe(OAuth2Strategy, () => {
 
   test("should throw if state is not on the session", async () => {
     let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
-    let request = new Request("https://example.com/callback?state=value");
+    let request = new Request(
+      `https://example.com/callback?state=${encodeState("value")}`
+    );
     let response = json(
       { message: "Missing state on session." },
       { status: 401 }
@@ -146,10 +152,10 @@ describe(OAuth2Strategy, () => {
     let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
 
     let session = await sessionStorage.getSession();
-    session.set("oauth2:state", "random-state");
+    session.set("oauth2:state", encodeState("random-state"));
 
     let request = new Request(
-      "https://example.com/callback?state=another-state",
+      `https://example.com/callback?state=${encodeState("another-state")}`,
       {
         headers: { cookie: await sessionStorage.commitSession(session) },
       }
@@ -164,13 +170,11 @@ describe(OAuth2Strategy, () => {
   test("should throw if code is not on the callback URL params", async () => {
     let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
     let session = await sessionStorage.getSession();
-    session.set("oauth2:state", "random-state");
-    let request = new Request(
-      "https://example.com/callback?state=random-state",
-      {
-        headers: { cookie: await sessionStorage.commitSession(session) },
-      }
-    );
+    let state = encodeState("random-state");
+    session.set("oauth2:state", state);
+    let request = new Request(`https://example.com/callback?state=${state}`, {
+      headers: { cookie: await sessionStorage.commitSession(session) },
+    });
     let response = json({ message: "Missing code." }, { status: 401 });
 
     await expect(
@@ -182,10 +186,11 @@ describe(OAuth2Strategy, () => {
     let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
 
     let session = await sessionStorage.getSession();
-    session.set("oauth2:state", "random-state");
+    let state = encodeState("random-state");
+    session.set("oauth2:state", state);
 
     let request = new Request(
-      "https://example.com/callback?state=random-state&code=random-code",
+      `https://example.com/callback?state=${state}&code=random-code`,
       {
         headers: { cookie: await sessionStorage.commitSession(session) },
       }
@@ -237,10 +242,11 @@ describe(OAuth2Strategy, () => {
     let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
 
     let session = await sessionStorage.getSession();
-    session.set("oauth2:state", "random-state");
+    let state = encodeState("random-state");
+    session.set("oauth2:state", state);
 
     let request = new Request(
-      "https://example.com/callback?state=random-state&code=random-code",
+      `https://example.com/callback?state=${state}&code=random-code`,
       {
         headers: { cookie: await sessionStorage.commitSession(session) },
       }
@@ -270,10 +276,11 @@ describe(OAuth2Strategy, () => {
     let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
 
     let session = await sessionStorage.getSession();
-    session.set("oauth2:state", "random-state");
+    let state = encodeState("random-state");
+    session.set("oauth2:state", state);
 
     let request = new Request(
-      "https://example.com/callback?state=random-state&code=random-code",
+      `https://example.com/callback?state=${state}&code=random-code`,
       {
         headers: { cookie: await sessionStorage.commitSession(session) },
       }
@@ -304,16 +311,59 @@ describe(OAuth2Strategy, () => {
     }
   });
 
+  test("should throw a response with user in session and redirect to redirectTo from state", async () => {
+    let user = { id: "123" };
+    verify.mockResolvedValueOnce(user);
+
+    let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
+
+    let session = await sessionStorage.getSession();
+    let state = encodeState("random-state", "/test-redirect");
+    session.set("oauth2:state", state);
+
+    let request = new Request(
+      `https://example.com/callback?state=${state}&code=random-code`,
+      {
+        headers: { cookie: await sessionStorage.commitSession(session) },
+      }
+    );
+
+    fetchMock.once(
+      JSON.stringify({
+        access_token: "random-access-token",
+        refresh_token: "random-refresh-token",
+        id_token: "random.id.token",
+      })
+    );
+
+    try {
+      await strategy.authenticate(request, sessionStorage, {
+        ...BASE_OPTIONS,
+        successRedirect: (redirectTo) => redirectTo ?? "/another-path",
+      });
+    } catch (error) {
+      if (!(error instanceof Response)) throw error;
+
+      session = await sessionStorage.getSession(
+        error.headers.get("Set-Cookie")
+      );
+
+      expect(error.headers.get("Location")).toBe("/test-redirect");
+      expect(session.get("user")).toEqual(user);
+    }
+  });
+
   test("should pass error as cause on failure", async () => {
     verify.mockRejectedValueOnce(new TypeError("Invalid credentials"));
 
     let strategy = new OAuth2Strategy(options, verify);
 
     let session = await sessionStorage.getSession();
-    session.set("oauth2:state", "random-state");
+    let state = encodeState("random-state");
+    session.set("oauth2:state", state);
 
     let request = new Request(
-      "https://example.com/callback?state=random-state&code=random-code",
+      `https://example.com/callback?state=${state}&code=random-code`,
       {
         headers: { cookie: await sessionStorage.commitSession(session) },
       }
@@ -346,10 +396,11 @@ describe(OAuth2Strategy, () => {
     let strategy = new OAuth2Strategy(options, verify);
 
     let session = await sessionStorage.getSession();
-    session.set("oauth2:state", "random-state");
+    let state = encodeState("random-state");
+    session.set("oauth2:state", state);
 
     let request = new Request(
-      "https://example.com/callback?state=random-state&code=random-code",
+      `https://example.com/callback?state=${state}&code=random-code`,
       {
         headers: { cookie: await sessionStorage.commitSession(session) },
       }
@@ -382,10 +433,11 @@ describe(OAuth2Strategy, () => {
     let strategy = new OAuth2Strategy(options, verify);
 
     let session = await sessionStorage.getSession();
-    session.set("oauth2:state", "random-state");
+    let state = encodeState("random-state");
+    session.set("oauth2:state", state);
 
     let request = new Request(
-      "https://example.com/callback?state=random-state&code=random-code",
+      `https://example.com/callback?state=${state}&code=random-code`,
       {
         headers: { cookie: await sessionStorage.commitSession(session) },
       }

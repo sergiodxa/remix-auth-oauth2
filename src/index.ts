@@ -57,6 +57,24 @@ export interface OAuth2StrategyVerifyParams<
   context?: AppLoadContext;
 }
 
+type OAuth2AuthenticateOptions = Omit<
+  AuthenticateOptions,
+  "successRedirect" | "failureRedirect"
+> & {
+  /**
+   * To what URL redirect in case of a successful authentication.
+   * If function, the `redirectTo` is provided as a parameter if called in the "callback" step.
+   * If not defined, it will return the user data.
+   */
+  successRedirect?: string | ((redirectTo?: string) => string | undefined);
+  /**
+   * To what URL redirect in case of a failed authentication.
+   * If function, the `redirectTo` is provided as a parameter if called in the "callback" step.
+   * If not defined, it will return null
+   */
+  failureRedirect?: string | ((redirectTo?: string) => string | undefined);
+};
+
 /**
  * The OAuth 2.0 authentication strategy authenticates requests using the OAuth
  * 2.0 framework.
@@ -134,7 +152,7 @@ export class OAuth2Strategy<
   async authenticate(
     request: Request,
     sessionStorage: SessionStorage,
-    options: AuthenticateOptions
+    options: OAuth2AuthenticateOptions
   ): Promise<User> {
     debug("Request URL", request.url);
     let url = new URL(request.url);
@@ -144,10 +162,23 @@ export class OAuth2Strategy<
 
     let user: User | null = session.get(options.sessionKey) ?? null;
 
+    let successRedirect =
+      typeof options.successRedirect === "function"
+        ? options.successRedirect()
+        : options.successRedirect;
+    let failureRedirect =
+      typeof options.failureRedirect === "function"
+        ? options.failureRedirect()
+        : options.failureRedirect;
+
     // User is already authenticated
     if (user) {
       debug("User is authenticated");
-      return this.success(user, request, sessionStorage, options);
+      return this.success(user, request, sessionStorage, {
+        ...options,
+        successRedirect,
+        failureRedirect,
+      });
     }
 
     let callbackURL = this.getCallbackURL(url);
@@ -157,12 +188,18 @@ export class OAuth2Strategy<
     // Redirect the user to the callback URL
     if (url.pathname !== callbackURL.pathname) {
       debug("Redirecting to callback URL");
-      let state = this.generateState();
+      let state = this.generateState(options);
+      let encodedState = this.encodeState(state);
       debug("State", state);
-      session.set(this.sessionStateKey, state);
-      throw redirect(this.getAuthorizationURL(request, state).toString(), {
-        headers: { "Set-Cookie": await sessionStorage.commitSession(session) },
-      });
+      session.set(this.sessionStateKey, encodedState);
+      throw redirect(
+        this.getAuthorizationURL(request, encodedState).toString(),
+        {
+          headers: {
+            "Set-Cookie": await sessionStorage.commitSession(session),
+          },
+        }
+      );
     }
 
     // Validations of the callback URL params
@@ -174,9 +211,33 @@ export class OAuth2Strategy<
         "Missing state on URL.",
         request,
         sessionStorage,
-        options,
+        { ...options, successRedirect, failureRedirect },
         new Error("Missing state on URL.")
       );
+    }
+
+    const decodedState = this.decodeState(stateUrl);
+    debug("Decoded State from URL", decodedState);
+    if (!decodedState) {
+      return await this.failure(
+        "Incorrect state in URL.",
+        request,
+        sessionStorage,
+        { ...options, successRedirect, failureRedirect },
+        new Error("Incorrect state in URL.")
+      );
+    }
+
+    if (
+      "redirectTo" in decodedState &&
+      typeof decodedState.redirectTo === "string"
+    ) {
+      if (typeof options.successRedirect === "function") {
+        successRedirect = options.successRedirect(decodedState.redirectTo);
+      }
+      if (typeof options.failureRedirect === "function") {
+        failureRedirect = options.failureRedirect(decodedState.redirectTo);
+      }
     }
 
     let stateSession = session.get(this.sessionStateKey);
@@ -186,7 +247,7 @@ export class OAuth2Strategy<
         "Missing state on session.",
         request,
         sessionStorage,
-        options,
+        { ...options, successRedirect, failureRedirect },
         new Error("Missing state on session.")
       );
     }
@@ -199,7 +260,7 @@ export class OAuth2Strategy<
         "State doesn't match.",
         request,
         sessionStorage,
-        options,
+        { ...options, successRedirect, failureRedirect },
         new Error("State doesn't match.")
       );
     }
@@ -210,7 +271,7 @@ export class OAuth2Strategy<
         "Missing code.",
         request,
         sessionStorage,
-        options,
+        { ...options, successRedirect, failureRedirect },
         new Error("Missing code.")
       );
     }
@@ -245,7 +306,7 @@ export class OAuth2Strategy<
           error.message,
           request,
           sessionStorage,
-          options,
+          { ...options, successRedirect, failureRedirect },
           error
         );
       }
@@ -254,7 +315,7 @@ export class OAuth2Strategy<
           error,
           request,
           sessionStorage,
-          options,
+          { ...options, successRedirect, failureRedirect },
           new Error(error)
         );
       }
@@ -262,13 +323,17 @@ export class OAuth2Strategy<
         "Unknown error",
         request,
         sessionStorage,
-        options,
+        { ...options, successRedirect, failureRedirect },
         new Error(JSON.stringify(error, null, 2))
       );
     }
 
     debug("User authenticated");
-    return await this.success(user, request, sessionStorage, options);
+    return await this.success(user, request, sessionStorage, {
+      ...options,
+      successRedirect,
+      failureRedirect,
+    });
   }
 
   /**
@@ -327,6 +392,26 @@ export class OAuth2Strategy<
     } as const;
   }
 
+  protected encodeState(state: { _nonce: string; successRedirect?: string }) {
+    return Buffer.from(JSON.stringify(state)).toString("base64");
+  }
+
+  protected decodeState(state: string) {
+    try {
+      let decodedState: unknown = JSON.parse(
+        Buffer.from(state, "base64").toString("ascii")
+      );
+      if (
+        typeof decodedState === "object" &&
+        decodedState !== null &&
+        "_nonce" in decodedState &&
+        typeof (decodedState as { [key: string]: unknown })._nonce === "string"
+      ) {
+        return decodedState as { _nonce?: string; [key: string]: unknown };
+      }
+    } catch {}
+  }
+
   private getCallbackURL(url: URL) {
     if (
       this.callbackURL.startsWith("http:") ||
@@ -358,8 +443,14 @@ export class OAuth2Strategy<
     return url;
   }
 
-  private generateState() {
-    return uuid();
+  private generateState(options: OAuth2AuthenticateOptions) {
+    return {
+      _nonce: uuid(),
+      redirectTo:
+        typeof options.successRedirect === "function"
+          ? options.successRedirect()
+          : options.successRedirect,
+    };
   }
 
   /**
