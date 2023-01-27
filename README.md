@@ -32,6 +32,7 @@ authenticator.use(
       clientID: process.env.CLIENT_ID,
       clientSecret: process.env.CLIENT_SECRET,
       callbackURL: "https://example.app/auth/callback",
+      useBasicAuthenticationHeader: false // defaults to false
     },
     async ({ accessToken, refreshToken, extraParams, profile, context }) => {
       // here you can use the params above to get the user and return it
