@@ -132,7 +132,7 @@ export class OAuth2Strategy<
     this.clientID = options.clientID;
     this.clientSecret = options.clientSecret;
     this.callbackURL = options.callbackURL;
-    this.scope = options.scope ?? "openid";
+    this.scope = options.scope;
     this.responseType = options.responseType ?? "code";
     this.useBasicAuthenticationHeader =
       options.useBasicAuthenticationHeader ?? false;
@@ -358,7 +358,9 @@ export class OAuth2Strategy<
       this.getCallbackURL(new URL(request.url)).toString()
     );
     params.set("state", state);
-    params.set("scope", this.scope);
+    if(this.scope) {
+      params.set("scope", this.scope);
+  . }
 
     let url = new URL(this.authorizationURL);
     url.search = params.toString();
