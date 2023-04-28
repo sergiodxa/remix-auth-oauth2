@@ -32,6 +32,7 @@ authenticator.use(
       clientID: process.env.CLIENT_ID,
       clientSecret: process.env.CLIENT_SECRET,
       callbackURL: "https://example.app/auth/callback",
+      scope: "openid email profile", // defaults to openid
       useBasicAuthenticationHeader: false // defaults to false
     },
     async ({ accessToken, refreshToken, extraParams, profile, context }) => {
