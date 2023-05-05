@@ -1,5 +1,5 @@
 {
-  "name": "remix-auth-oauth2",
+  "name": "gt-remix-auth-oauth2",
   "version": "1.6.0",
   "main": "./build/index.js",
   "types": "./build/index.d.ts",
@@ -35,6 +35,7 @@
     "@remix-run/node": "^1.0.0",
     "@remix-run/react": "^1.0.0",
     "@remix-run/server-runtime": "^1.0.0",
+    "@types/crypto-js": "^4.1.1",
     "@types/debug": "^4.1.7",
     "@types/jest": "^27.5.0",
     "@types/uuid": "^8.3.4",
@@ -57,8 +58,9 @@
     "typescript": "^4.6.4"
   },
   "dependencies": {
+    "crypto-js": "^4.1.1",
     "debug": "^4.3.4",
-    "remix-auth": "^3.4.0",
+    "remix-auth": "^3.2.2",
     "uuid": "^8.3.2"
   }
 }

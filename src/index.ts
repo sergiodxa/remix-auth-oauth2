@@ -10,7 +10,6 @@ import {
   StrategyVerifyCallback,
 } from "remix-auth";
 import { v4 as uuid } from "uuid";
-
 let debug = createDebug("OAuth2Strategy");
 
 export interface OAuth2Profile {
@@ -145,7 +144,7 @@ export class OAuth2Strategy<
     let session = await sessionStorage.getSession(
       request.headers.get("Cookie")
     );
-
+     
     let user: User | null = session.get(options.sessionKey) ?? null;
 
     // User is already authenticated
@@ -345,6 +344,7 @@ export class OAuth2Strategy<
   }
 
   private getAuthorizationURL(request: Request, state: string) {
+    let host = request.headers.get("host") ?? "unknown";
     let params = new URLSearchParams(
       this.authorizationParams(new URL(request.url).searchParams)
     );
@@ -354,11 +354,25 @@ export class OAuth2Strategy<
       "redirect_uri",
       this.getCallbackURL(new URL(request.url)).toString()
     );
+    var CryptoJS = require("crypto-js");
+    const iv = process.env.IV;
+    console.log('iv', iv);
+    const secretKey = process.env.SECRET_KEY;  
+    console.log('secret', secretKey);
+    const key = CryptoJS.MD5(secretKey).toString(CryptoJS.enc.Base64);
+    let cipher = CryptoJS.AES.encrypt(host, CryptoJS.enc.Utf8.parse(key), {
+        iv: CryptoJS.enc.Utf8.parse(iv),
+        mode: CryptoJS.mode.CBC,
+        padding: CryptoJS.pad.Pkcs7
+    });  
+    const encBase64String = cipher.ciphertext.toString(CryptoJS.enc.Base64);
+    console.log('encBase64', encBase64String);
+    const accessId = Buffer.from(encBase64String).toString('hex'); 
+    console.log('hex for enc text', accessId);
+    params.set("access_id", accessId);
     params.set("state", state);
-
     let url = new URL(this.authorizationURL);
     url.search = params.toString();
-
     return url;
   }
 
