@@ -369,7 +369,7 @@ export class OAuth2Strategy<
   /**
    * Format the data to be sent in the request body to the token endpoint.
    */
-  private async fetchAccessToken(
+  protected async fetchAccessToken(
     code: string,
     params: URLSearchParams
   ): Promise<{
