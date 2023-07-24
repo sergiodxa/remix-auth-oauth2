@@ -4,6 +4,7 @@
   "main": "./build/index.js",
   "types": "./build/index.d.ts",
   "scripts": {
+    "prepare": "npm run build",
     "build": "tsc --project tsconfig.json",
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "lint": "eslint --ext .ts,.tsx src/",
