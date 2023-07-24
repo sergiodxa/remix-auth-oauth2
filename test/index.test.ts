@@ -33,6 +33,7 @@ describe(OAuth2Strategy, () => {
   interface User {
     id: string;
   }
+
   interface TestProfile extends OAuth2Profile {
     provider: "oauth2";
   }
@@ -178,7 +179,7 @@ describe(OAuth2Strategy, () => {
     ).rejects.toEqual(response);
   });
 
-  test("should call verify with the access token, refresh token, extra params, user profile and context", async () => {
+  test("should call verify with the access token, refresh token, extra params, user profile, context and request", async () => {
     let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
 
     let session = await sessionStorage.getSession();
@@ -227,6 +228,7 @@ describe(OAuth2Strategy, () => {
       extraParams: { id_token: "random.id.token" },
       profile: { provider: "oauth2" },
       context,
+      request,
     } as OAuth2StrategyVerifyParams<OAuth2Profile, { id_token: string }>);
   });
 
@@ -410,7 +412,7 @@ describe(OAuth2Strategy, () => {
     );
   });
 
-  test.only("thrown response in verify callback should pass-through", async () => {
+  test("thrown response in verify callback should pass-through", async () => {
     verify.mockRejectedValueOnce(redirect("/test"));
 
     let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);

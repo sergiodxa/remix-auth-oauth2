@@ -56,6 +56,7 @@ export interface OAuth2StrategyVerifyParams<
   extraParams: ExtraParams;
   profile: Profile;
   context?: AppLoadContext;
+  request: Request;
 }
 
 /**
@@ -241,6 +242,7 @@ export class OAuth2Strategy<
         extraParams,
         profile,
         context: options.context,
+        request,
       });
     } catch (error) {
       debug("Failed to verify user", error);
