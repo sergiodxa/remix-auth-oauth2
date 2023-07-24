@@ -32,9 +32,16 @@ authenticator.use(
       clientID: process.env.CLIENT_ID,
       clientSecret: process.env.CLIENT_SECRET,
       callbackURL: "https://example.app/auth/callback",
-      useBasicAuthenticationHeader: false // defaults to false
+      useBasicAuthenticationHeader: false, // defaults to false
     },
-    async ({ accessToken, refreshToken, extraParams, profile, context }) => {
+    async ({
+      accessToken,
+      refreshToken,
+      extraParams,
+      profile,
+      context,
+      request,
+    }) => {
       // here you can use the params above to get the user and return it
       // what you do inside this and how you find the user is up to you
       return await getUser(
@@ -42,7 +49,8 @@ authenticator.use(
         refreshToken,
         extraParams,
         profile,
-        context
+        context,
+        request
       );
     }
   ),
