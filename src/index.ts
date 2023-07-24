@@ -244,6 +244,8 @@ export class OAuth2Strategy<
       });
     } catch (error) {
       debug("Failed to verify user", error);
+      // Allow responses to pass-through
+      if (error instanceof Response) throw error;
       if (error instanceof Error) {
         return await this.failure(
           error.message,
