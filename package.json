@@ -44,7 +44,6 @@
     "@types/crypto-js": "^4.1.1",
     "@types/debug": "^4.1.7",
     "@types/jest": "^27.5.0",
-    "@types/randomstring": "^1.1.8",
     "@types/uuid": "^8.3.4",
     "@typescript-eslint/eslint-plugin": "^5.23.0",
     "@typescript-eslint/parser": "^5.23.0",
@@ -65,11 +64,9 @@
     "typescript": "^4.6.4"
   },
   "dependencies": {
-    "base64url": "^3.0.1",
     "crypto-js": "^4.1.1",
     "debug": "^4.3.4",
-    "randomstring": "^1.2.3",
-    "remix-auth": "^3.2.2",
+    "remix-auth": "^3.4.0",
     "uuid": "^8.3.2"
   }
 }
