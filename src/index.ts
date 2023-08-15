@@ -61,6 +61,7 @@ export interface OAuth2StrategyVerifyParams<
   extraParams: ExtraParams;
   profile: Profile;
   context?: AppLoadContext;
+  request: Request;
 }
 
 /**
@@ -276,9 +277,12 @@ export class OAuth2Strategy<
         extraParams,
         profile,
         context: options.context,
+        request,
       });
     } catch (error) {
       debug("Failed to verify user", error);
+      // Allow responses to pass-through
+      if (error instanceof Response) throw error;
       if (error instanceof Error) {
         return await this.failure(
           error.message,
@@ -433,7 +437,7 @@ export class OAuth2Strategy<
   /**
    * Format the data to be sent in the request body to the token endpoint.
    */
-  private async fetchAccessToken(
+  protected async fetchAccessToken(
     code: string,
     params: URLSearchParams
   ): Promise<{

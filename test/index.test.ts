@@ -1,4 +1,4 @@
-import { createCookieSessionStorage, json } from "@remix-run/node";
+import { createCookieSessionStorage, json, redirect } from "@remix-run/node";
 import fetchMock, { enableFetchMocks } from "jest-fetch-mock";
 import { AuthenticateOptions, AuthorizationError } from "remix-auth";
 import {
@@ -33,6 +33,7 @@ describe(OAuth2Strategy, () => {
   interface User {
     id: string;
   }
+
   interface TestProfile extends OAuth2Profile {
     provider: "oauth2";
   }
@@ -178,7 +179,7 @@ describe(OAuth2Strategy, () => {
     ).rejects.toEqual(response);
   });
 
-  test("should call verify with the access token, refresh token, extra params, user profile and context", async () => {
+  test("should call verify with the access token, refresh token, extra params, user profile, context and request", async () => {
     let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
 
     let session = await sessionStorage.getSession();
@@ -227,6 +228,7 @@ describe(OAuth2Strategy, () => {
       extraParams: { id_token: "random.id.token" },
       profile: { provider: "oauth2" },
       context,
+      request,
     } as OAuth2StrategyVerifyParams<OAuth2Profile, { id_token: string }>);
   });
 
@@ -241,9 +243,7 @@ describe(OAuth2Strategy, () => {
 
     let request = new Request(
       "https://example.com/callback?state=random-state&code=random-code",
-      {
-        headers: { cookie: await sessionStorage.commitSession(session) },
-      }
+      { headers: { cookie: await sessionStorage.commitSession(session) } }
     );
 
     fetchMock.once(
@@ -412,6 +412,41 @@ describe(OAuth2Strategy, () => {
     );
   });
 
+  test("thrown response in verify callback should pass-through", async () => {
+    verify.mockRejectedValueOnce(redirect("/test"));
+
+    let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
+
+    let session = await sessionStorage.getSession();
+    session.set("oauth2:state", "random-state");
+
+    let request = new Request(
+      "https://example.com/callback?state=random-state&code=random-code",
+      { headers: { cookie: await sessionStorage.commitSession(session) } }
+    );
+
+    fetchMock.once(
+      JSON.stringify({
+        access_token: "random-access-token",
+        refresh_token: "random-refresh-token",
+        id_token: "random.id.token",
+      })
+    );
+
+    let response = await strategy
+      .authenticate(request, sessionStorage, BASE_OPTIONS)
+      .then(() => {
+        throw new Error("Should have failed.");
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Response) return error;
+        throw error;
+      });
+
+    expect(response.status).toEqual(302);
+    expect(response.headers.get("location")).toEqual("/test");
+  });
+
   describe("with PKCE enabled", () => {
     test("it should redirect to authorization and establish a challenge", async () => {
       let strategy = new OAuth2Strategy<User, TestProfile>(
@@ -534,6 +569,7 @@ describe(OAuth2Strategy, () => {
         extraParams: { id_token: "random.id.token" },
         profile: { provider: "oauth2" },
         context,
+        request,
       } as OAuth2StrategyVerifyParams<OAuth2Profile, { id_token: string }>);
     });
   });

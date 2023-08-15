@@ -4,8 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Type of version (major / minor / patch)'
+        description: "Semver type of new version (major / minor / patch)"
         required: true
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
 
 jobs:
   bump-version:
@@ -19,14 +24,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '16'
-          cache: 'npm'
+          node-version: "16"
+          cache: "npm"
       - name: Install dependencies
         uses: bahmutov/npm-install@v1
       - name: Setup Git
         run: |
-          git config user.name '${{ secrets.GIT_USER_NAME }}'
-          git config user.email '${{ secrets.GIT_USER_EMAIL }}'
+          git config user.name 'Sergio Xalambrí'
+          git config user.email 'hello@sergiodxa.com'
       - name: bump version
         run: npm version ${{ github.event.inputs.version }}
 

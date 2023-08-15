@@ -1,9 +1,15 @@
 {
   "name": "remix-auth-oauth2",
-  "version": "1.6.0",
+  "version": "1.8.0",
   "main": "./build/index.js",
   "types": "./build/index.d.ts",
+  "homepage": "https://github.com/sergiodxa/remix-auth-oauth2#readme",
+  "repository": {
+    "url": "https://github.com/sergiodxa/remix-auth-oauth2",
+    "type": "git"
+  },
   "scripts": {
+    "prepare": "npm run build",
     "build": "tsc --project tsconfig.json",
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "lint": "eslint --ext .ts,.tsx src/",
