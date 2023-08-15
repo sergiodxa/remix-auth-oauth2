@@ -13,6 +13,7 @@ import { v4 as uuid } from "uuid";
 import crypto from "crypto";
 import randomstring from "randomstring";
 import base64url from "base64url";
+import CryptoJS from "crypto-js";
 
 let debug = createDebug("OAuth2Strategy");
 
@@ -165,11 +166,10 @@ export class OAuth2Strategy<
 
     debug("Callback URL", callbackURL);
 
-    // PKCE
-    const { codeVerifier, codeChallenge } = this.generatePKCE();
-
     // Redirect the user to the callback URL
     if (url.pathname !== callbackURL.pathname) {
+      // PKCE
+      const { codeVerifier, codeChallenge } = this.generatePKCE();
       debug("Redirecting to callback URL");
       let state = this.generateState();
       debug("State", state);
@@ -235,7 +235,7 @@ export class OAuth2Strategy<
         request,
         sessionStorage,
         options,
-        new Error("Missing code verifier on session")
+        new Error("Missing code verifier on session.")
       );
     }
     session.unset(this.codeVerifierStateKey);
@@ -413,12 +413,12 @@ export class OAuth2Strategy<
       };
     }
 
-    const codeVerifier = randomstring.generate(128);
-    const base64Digest = crypto
-      .createHash("sha256")
-      .update(codeVerifier)
-      .digest("base64");
-    const codeChallenge = base64url.fromBase64(base64Digest);
+    const codeVerifier = CryptoJS.lib.WordArray.random(96).toString(
+      CryptoJS.enc.Base64url
+    );
+    const codeChallenge = CryptoJS.SHA256(codeVerifier).toString(
+      CryptoJS.enc.Base64url
+    );
 
     return {
       codeVerifier,

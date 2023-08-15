@@ -35,6 +35,7 @@
     "@remix-run/node": "^1.0.0",
     "@remix-run/react": "^1.0.0",
     "@remix-run/server-runtime": "^1.0.0",
+    "@types/crypto-js": "^4.1.1",
     "@types/debug": "^4.1.7",
     "@types/jest": "^27.5.0",
     "@types/randomstring": "^1.1.8",
@@ -59,6 +60,7 @@
   },
   "dependencies": {
     "base64url": "^3.0.1",
+    "crypto-js": "^4.1.1",
     "debug": "^4.3.4",
     "randomstring": "^1.2.3",
     "remix-auth": "^3.2.2",

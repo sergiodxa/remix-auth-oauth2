@@ -411,4 +411,130 @@ describe(OAuth2Strategy, () => {
       new Error(JSON.stringify({ message: "Invalid email address" }, null, 2))
     );
   });
+
+  describe("with PKCE enabled", () => {
+    test("it should redirect to authorization and establish a challenge", async () => {
+      let strategy = new OAuth2Strategy<User, TestProfile>(
+        {
+          ...options,
+          usePKCEFlow: true,
+        },
+        verify
+      );
+      let request = new Request("https://example.com/login");
+      try {
+        await strategy.authenticate(request, sessionStorage, BASE_OPTIONS);
+      } catch (error) {
+        if (!(error instanceof Response)) throw error;
+
+        let redirect = new URL(error.headers.get("Location") as string);
+
+        let session = await sessionStorage.getSession(
+          error.headers.get("Set-Cookie")
+        );
+
+        expect(error.status).toBe(302);
+
+        expect(redirect.pathname).toBe("/authorize");
+        expect(redirect.searchParams.get("response_type")).toBe("code");
+        expect(redirect.searchParams.get("client_id")).toBe(options.clientID);
+        expect(redirect.searchParams.get("redirect_uri")).toBe(
+          options.callbackURL
+        );
+        expect(redirect.searchParams.has("state")).toBeTruthy();
+        expect(redirect.searchParams.get("code_challenge_method")).toBe("S256");
+        expect(redirect.searchParams.has("code_challenge")).toBeTruthy();
+
+        expect(session.get("oauth2:state")).toBe(
+          redirect.searchParams.get("state")
+        );
+      }
+    });
+
+    test("it should throw an error if the verifier is not found on the session", async () => {
+      let strategy = new OAuth2Strategy<User, TestProfile>(
+        {
+          ...options,
+          usePKCEFlow: true,
+        },
+        verify
+      );
+      let session = await sessionStorage.getSession();
+      session.set("oauth2:state", "random-state");
+      let request = new Request(
+        "https://example.com/callback?state=random-state&code=random-code",
+        {
+          headers: { cookie: await sessionStorage.commitSession(session) },
+        }
+      );
+      let response = json(
+        { message: "Missing code verifier on session." },
+        { status: 401 }
+      );
+
+      await expect(
+        strategy.authenticate(request, sessionStorage, BASE_OPTIONS)
+      ).rejects.toEqual(response);
+    });
+
+    test("should call verify with the access token, refresh token, extra params, user profile, context, and verifier", async () => {
+      let strategy = new OAuth2Strategy<User, TestProfile>(
+        {
+          ...options,
+          usePKCEFlow: true,
+        },
+        verify
+      );
+
+      let session = await sessionStorage.getSession();
+      session.set("oauth2:state", "random-state");
+      session.set("oauth2:code_verifier", "random-verifier");
+
+      let request = new Request(
+        "https://example.com/callback?state=random-state&code=random-code",
+        {
+          headers: { cookie: await sessionStorage.commitSession(session) },
+        }
+      );
+
+      fetchMock.once(
+        JSON.stringify({
+          access_token: "random-access-token",
+          refresh_token: "random-refresh-token",
+          id_token: "random.id.token",
+        })
+      );
+
+      let context = { test: "it works" };
+
+      await strategy.authenticate(request, sessionStorage, {
+        ...BASE_OPTIONS,
+        context,
+      });
+
+      let [url, mockRequest] = fetchMock.mock.calls[0];
+      let body = mockRequest?.body as URLSearchParams;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let headers = mockRequest?.headers as any;
+
+      expect(url).toBe(options.tokenURL);
+
+      expect(mockRequest?.method as string).toBe("POST");
+      expect(headers["Content-Type"]).toBe("application/x-www-form-urlencoded");
+
+      expect(body.get("client_id")).toBe(options.clientID);
+      expect(body.get("client_secret")).toBe(options.clientSecret);
+      expect(body.get("grant_type")).toBe("authorization_code");
+      expect(body.get("code")).toBe("random-code");
+      expect(body.get("code_verifier")).toBe("random-verifier");
+
+      expect(verify).toHaveBeenLastCalledWith({
+        accessToken: "random-access-token",
+        refreshToken: "random-refresh-token",
+        extraParams: { id_token: "random.id.token" },
+        profile: { provider: "oauth2" },
+        context,
+      } as OAuth2StrategyVerifyParams<OAuth2Profile, { id_token: string }>);
+    });
+  });
 });
