@@ -33,6 +33,7 @@ authenticator.use(
       clientSecret: process.env.CLIENT_SECRET,
       callbackURL: "https://example.app/auth/callback",
       useBasicAuthenticationHeader: false, // defaults to false
+      usePKCEFlow: false // defaults to false
     },
     async ({
       accessToken,
