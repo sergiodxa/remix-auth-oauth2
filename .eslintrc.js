@@ -1,12 +1,13 @@
+/* eslint-disable unicorn/no-empty-file */
 /* eslint-disable unicorn/prefer-module */
 module.exports = {
   root: true,
   parser: "@typescript-eslint/parser",
-  plugins: ["@typescript-eslint", "unicorn", "jest", "prettier"],
+  plugins: ["@typescript-eslint", "unicorn", "jest"],
   extends: [
     "plugin:unicorn/recommended",
     "plugin:@typescript-eslint/recommended",
-    "plugin:prettier/recommended",
+    "prettier",
   ],
   rules: {
     "prefer-const": "off",
