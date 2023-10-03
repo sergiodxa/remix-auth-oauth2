@@ -5,7 +5,7 @@ import {
   OAuth2Profile,
   OAuth2Strategy,
   OAuth2StrategyVerifyParams,
-} from "../src";
+} from "../build";
 
 enableFetchMocks();
 
@@ -61,7 +61,7 @@ describe(OAuth2Strategy, () => {
     let user = await strategy.authenticate(
       request,
       sessionStorage,
-      BASE_OPTIONS
+      BASE_OPTIONS,
     );
 
     expect(user).toEqual({ id: "123" });
@@ -101,7 +101,7 @@ describe(OAuth2Strategy, () => {
       let redirect = new URL(error.headers.get("Location") as string);
 
       let session = await sessionStorage.getSession(
-        error.headers.get("Set-Cookie")
+        error.headers.get("Set-Cookie"),
       );
 
       expect(error.status).toBe(302);
@@ -110,12 +110,12 @@ describe(OAuth2Strategy, () => {
       expect(redirect.searchParams.get("response_type")).toBe("code");
       expect(redirect.searchParams.get("client_id")).toBe(options.clientID);
       expect(redirect.searchParams.get("redirect_uri")).toBe(
-        options.callbackURL
+        options.callbackURL,
       );
       expect(redirect.searchParams.has("state")).toBeTruthy();
 
       expect(session.get("oauth2:state")).toBe(
-        redirect.searchParams.get("state")
+        redirect.searchParams.get("state"),
       );
     }
   });
@@ -123,24 +123,29 @@ describe(OAuth2Strategy, () => {
   test("should throw if state is not on the callback URL params", async () => {
     let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
     let request = new Request("https://example.com/callback");
-    let response = json({ message: "Missing state on URL." }, { status: 401 });
 
-    await expect(
-      strategy.authenticate(request, sessionStorage, BASE_OPTIONS)
-    ).rejects.toEqual(response);
+    let response = await catchResponse(
+      strategy.authenticate(request, sessionStorage, BASE_OPTIONS),
+    );
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      message: "Missing state on URL.",
+    });
   });
 
   test("should throw if state is not on the session", async () => {
     let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
     let request = new Request("https://example.com/callback?state=value");
-    let response = json(
-      { message: "Missing state on session." },
-      { status: 401 }
+
+    let response = await catchResponse(
+      strategy.authenticate(request, sessionStorage, BASE_OPTIONS),
     );
 
-    await expect(
-      strategy.authenticate(request, sessionStorage, BASE_OPTIONS)
-    ).rejects.toEqual(response);
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      message: "Missing state on session.",
+    });
   });
 
   test("should throw if the state in params doesn't match the state in session", async () => {
@@ -153,13 +158,17 @@ describe(OAuth2Strategy, () => {
       "https://example.com/callback?state=another-state",
       {
         headers: { cookie: await sessionStorage.commitSession(session) },
-      }
+      },
     );
-    let response = json({ message: "State doesn't match." }, { status: 401 });
 
-    await expect(
-      strategy.authenticate(request, sessionStorage, BASE_OPTIONS)
-    ).rejects.toEqual(response);
+    let response = await catchResponse(
+      strategy.authenticate(request, sessionStorage, BASE_OPTIONS),
+    );
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      message: "State doesn't match.",
+    });
   });
 
   test("should throw if code is not on the callback URL params", async () => {
@@ -170,13 +179,17 @@ describe(OAuth2Strategy, () => {
       "https://example.com/callback?state=random-state",
       {
         headers: { cookie: await sessionStorage.commitSession(session) },
-      }
+      },
     );
-    let response = json({ message: "Missing code." }, { status: 401 });
 
-    await expect(
-      strategy.authenticate(request, sessionStorage, BASE_OPTIONS)
-    ).rejects.toEqual(response);
+    let response = await catchResponse(
+      strategy.authenticate(request, sessionStorage, BASE_OPTIONS),
+    );
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      message: "Missing code.",
+    });
   });
 
   test("should call verify with the access token, refresh token, extra params, user profile, context and request", async () => {
@@ -189,7 +202,7 @@ describe(OAuth2Strategy, () => {
       "https://example.com/callback?state=random-state&code=random-code",
       {
         headers: { cookie: await sessionStorage.commitSession(session) },
-      }
+      },
     );
 
     fetchMock.once(
@@ -197,7 +210,7 @@ describe(OAuth2Strategy, () => {
         access_token: "random-access-token",
         refresh_token: "random-refresh-token",
         id_token: "random.id.token",
-      })
+      }),
     );
 
     let context = { test: "it works" };
@@ -243,7 +256,7 @@ describe(OAuth2Strategy, () => {
 
     let request = new Request(
       "https://example.com/callback?state=random-state&code=random-code",
-      { headers: { cookie: await sessionStorage.commitSession(session) } }
+      { headers: { cookie: await sessionStorage.commitSession(session) } },
     );
 
     fetchMock.once(
@@ -251,13 +264,13 @@ describe(OAuth2Strategy, () => {
         access_token: "random-access-token",
         refresh_token: "random-refresh-token",
         id_token: "random.id.token",
-      })
+      }),
     );
 
     let response = await strategy.authenticate(
       request,
       sessionStorage,
-      BASE_OPTIONS
+      BASE_OPTIONS,
     );
 
     expect(response).toEqual(user);
@@ -276,7 +289,7 @@ describe(OAuth2Strategy, () => {
       "https://example.com/callback?state=random-state&code=random-code",
       {
         headers: { cookie: await sessionStorage.commitSession(session) },
-      }
+      },
     );
 
     fetchMock.once(
@@ -284,7 +297,7 @@ describe(OAuth2Strategy, () => {
         access_token: "random-access-token",
         refresh_token: "random-refresh-token",
         id_token: "random.id.token",
-      })
+      }),
     );
 
     try {
@@ -296,7 +309,7 @@ describe(OAuth2Strategy, () => {
       if (!(error instanceof Response)) throw error;
 
       session = await sessionStorage.getSession(
-        error.headers.get("Set-Cookie")
+        error.headers.get("Set-Cookie"),
       );
 
       expect(error.headers.get("Location")).toBe("/");
@@ -316,7 +329,7 @@ describe(OAuth2Strategy, () => {
       "https://example.com/callback?state=random-state&code=random-code",
       {
         headers: { cookie: await sessionStorage.commitSession(session) },
-      }
+      },
     );
 
     fetchMock.once(
@@ -324,7 +337,7 @@ describe(OAuth2Strategy, () => {
         access_token: "random-access-token",
         refresh_token: "random-refresh-token",
         id_token: "random.id.token",
-      })
+      }),
     );
 
     let result = await strategy
@@ -336,7 +349,7 @@ describe(OAuth2Strategy, () => {
 
     expect(result).toEqual(new AuthorizationError("Invalid credentials"));
     expect((result as AuthorizationError).cause).toEqual(
-      new TypeError("Invalid credentials")
+      new TypeError("Invalid credentials"),
     );
   });
 
@@ -352,7 +365,7 @@ describe(OAuth2Strategy, () => {
       "https://example.com/callback?state=random-state&code=random-code",
       {
         headers: { cookie: await sessionStorage.commitSession(session) },
-      }
+      },
     );
 
     fetchMock.once(
@@ -360,7 +373,7 @@ describe(OAuth2Strategy, () => {
         access_token: "random-access-token",
         refresh_token: "random-refresh-token",
         id_token: "random.id.token",
-      })
+      }),
     );
 
     let result = await strategy
@@ -372,7 +385,7 @@ describe(OAuth2Strategy, () => {
 
     expect(result).toEqual(new AuthorizationError("Invalid credentials"));
     expect((result as AuthorizationError).cause).toEqual(
-      new TypeError("Invalid credentials")
+      new TypeError("Invalid credentials"),
     );
   });
 
@@ -388,7 +401,7 @@ describe(OAuth2Strategy, () => {
       "https://example.com/callback?state=random-state&code=random-code",
       {
         headers: { cookie: await sessionStorage.commitSession(session) },
-      }
+      },
     );
 
     fetchMock.once(
@@ -396,7 +409,7 @@ describe(OAuth2Strategy, () => {
         access_token: "random-access-token",
         refresh_token: "random-refresh-token",
         id_token: "random.id.token",
-      })
+      }),
     );
 
     let result = await strategy
@@ -408,7 +421,7 @@ describe(OAuth2Strategy, () => {
 
     expect(result).toEqual(new AuthorizationError("Unknown error"));
     expect((result as AuthorizationError).cause).toEqual(
-      new Error(JSON.stringify({ message: "Invalid email address" }, null, 2))
+      new Error(JSON.stringify({ message: "Invalid email address" }, null, 2)),
     );
   });
 
@@ -422,7 +435,7 @@ describe(OAuth2Strategy, () => {
 
     let request = new Request(
       "https://example.com/callback?state=random-state&code=random-code",
-      { headers: { cookie: await sessionStorage.commitSession(session) } }
+      { headers: { cookie: await sessionStorage.commitSession(session) } },
     );
 
     fetchMock.once(
@@ -430,7 +443,7 @@ describe(OAuth2Strategy, () => {
         access_token: "random-access-token",
         refresh_token: "random-refresh-token",
         id_token: "random.id.token",
-      })
+      }),
     );
 
     let response = await strategy
@@ -447,3 +460,13 @@ describe(OAuth2Strategy, () => {
     expect(response.headers.get("location")).toEqual("/test");
   });
 });
+
+async function catchResponse(promise: Promise<unknown>) {
+  try {
+    await promise;
+    throw new Error("Should have failed.");
+  } catch (error) {
+    if (error instanceof Response) return error;
+    throw error;
+  }
+}

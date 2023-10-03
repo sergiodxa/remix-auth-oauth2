@@ -49,7 +49,7 @@ export interface OAuth2StrategyOptions {
 
 export interface OAuth2StrategyVerifyParams<
   Profile extends OAuth2Profile,
-  ExtraParams extends Record<string, unknown> = Record<string, never>
+  ExtraParams extends Record<string, unknown> = Record<string, never>,
 > {
   accessToken: string;
   refreshToken?: string;
@@ -104,7 +104,7 @@ export interface OAuth2StrategyVerifyParams<
 export class OAuth2Strategy<
   User,
   Profile extends OAuth2Profile,
-  ExtraParams extends Record<string, unknown> = Record<string, never>
+  ExtraParams extends Record<string, unknown> = Record<string, never>,
 > extends Strategy<User, OAuth2StrategyVerifyParams<Profile, ExtraParams>> {
   name = "oauth2";
 
@@ -123,7 +123,7 @@ export class OAuth2Strategy<
     verify: StrategyVerifyCallback<
       User,
       OAuth2StrategyVerifyParams<Profile, ExtraParams>
-    >
+    >,
   ) {
     super(verify);
     this.authorizationURL = options.authorizationURL;
@@ -139,12 +139,12 @@ export class OAuth2Strategy<
   async authenticate(
     request: Request,
     sessionStorage: SessionStorage,
-    options: AuthenticateOptions
+    options: AuthenticateOptions,
   ): Promise<User> {
     debug("Request URL", request.url);
     let url = new URL(request.url);
     let session = await sessionStorage.getSession(
-      request.headers.get("Cookie")
+      request.headers.get("Cookie"),
     );
 
     let user: User | null = session.get(options.sessionKey) ?? null;
@@ -180,7 +180,7 @@ export class OAuth2Strategy<
         request,
         sessionStorage,
         options,
-        new Error("Missing state on URL.")
+        new Error("Missing state on URL."),
       );
     }
 
@@ -192,7 +192,7 @@ export class OAuth2Strategy<
         request,
         sessionStorage,
         options,
-        new Error("Missing state on session.")
+        new Error("Missing state on session."),
       );
     }
 
@@ -205,7 +205,7 @@ export class OAuth2Strategy<
         request,
         sessionStorage,
         options,
-        new Error("State doesn't match.")
+        new Error("State doesn't match."),
       );
     }
 
@@ -216,7 +216,7 @@ export class OAuth2Strategy<
         request,
         sessionStorage,
         options,
-        new Error("Missing code.")
+        new Error("Missing code."),
       );
     }
 
@@ -254,7 +254,7 @@ export class OAuth2Strategy<
           request,
           sessionStorage,
           options,
-          error
+          error,
         );
       }
       if (typeof error === "string") {
@@ -263,7 +263,7 @@ export class OAuth2Strategy<
           request,
           sessionStorage,
           options,
-          new Error(error)
+          new Error(error),
         );
       }
       return await this.failure(
@@ -271,7 +271,7 @@ export class OAuth2Strategy<
         request,
         sessionStorage,
         options,
-        new Error(JSON.stringify(error, null, 2))
+        new Error(JSON.stringify(error, null, 2)),
       );
     }
 
@@ -291,7 +291,7 @@ export class OAuth2Strategy<
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     accessToken: string,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    params: ExtraParams
+    params: ExtraParams,
   ): Promise<Profile> {
     return { provider: "oauth2" } as Profile;
   }
@@ -355,7 +355,7 @@ export class OAuth2Strategy<
 
   private getAuthorizationURL(request: Request, state: string) {
     let params = new URLSearchParams(
-      this.authorizationParams(new URL(request.url).searchParams)
+      this.authorizationParams(new URL(request.url).searchParams),
     );
     params.set("response_type", this.responseType);
     params.set("client_id", this.clientID);
@@ -377,7 +377,7 @@ export class OAuth2Strategy<
    */
   protected async fetchAccessToken(
     code: string,
-    params: URLSearchParams
+    params: URLSearchParams,
   ): Promise<{
     accessToken: string;
     refreshToken?: string;
@@ -389,7 +389,7 @@ export class OAuth2Strategy<
 
     if (this.useBasicAuthenticationHeader) {
       const b64EncodedCredentials = Buffer.from(
-        `${this.clientID}:${this.clientSecret}`
+        `${this.clientID}:${this.clientSecret}`,
       ).toString("base64");
 
       headers = {
