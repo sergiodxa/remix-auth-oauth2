@@ -113,10 +113,28 @@ describe(OAuth2Strategy, () => {
         options.callbackURL,
       );
       expect(redirect.searchParams.has("state")).toBeTruthy();
+      expect(redirect.searchParams.get("scope")).toBeNull();
 
       expect(session.get("oauth2:state")).toBe(
         redirect.searchParams.get("state"),
       );
+    }
+  });
+
+  test("should build scope into authorization redirect when provided", async () => {
+    let strategy = new OAuth2Strategy<User, TestProfile>(
+      { ...options, scope: "scope_1 SCOPE2 scOpE3" },
+      verify
+    );
+
+    let request = new Request("https://example.com/login");
+
+    try {
+      await strategy.authenticate(request, sessionStorage, BASE_OPTIONS);
+    } catch (error) {
+      if (!(error instanceof Response)) throw error;
+      let redirect = new URL(error.headers.get("Location") as string);
+      expect(redirect.searchParams.get("scope")).toBe("scope_1 SCOPE2 scOpE3");
     }
   });
 
