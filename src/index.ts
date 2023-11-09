@@ -10,8 +10,12 @@ import {
   StrategyVerifyCallback,
 } from "remix-auth";
 import { v4 as uuid } from "uuid";
+import fetch from "node-fetch";
+import {ProxyAgent} from "proxy-agent";
 
 let debug = createDebug("OAuth2Strategy");
+
+const agent = new ProxyAgent();
 
 export interface OAuth2Profile {
   provider: string;
@@ -417,6 +421,7 @@ export class OAuth2Strategy<
       method: "POST",
       headers,
       body: params,
+      agent: agent
     });
 
     if (!response.ok) {
