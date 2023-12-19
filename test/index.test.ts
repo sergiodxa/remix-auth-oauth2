@@ -1,4 +1,4 @@
-import { createCookieSessionStorage, json, redirect } from "@remix-run/node";
+import { createCookieSessionStorage, redirect } from "@remix-run/node";
 import fetchMock, { enableFetchMocks } from "jest-fetch-mock";
 import { AuthenticateOptions, AuthorizationError } from "remix-auth";
 import {
@@ -135,6 +135,30 @@ describe(OAuth2Strategy, () => {
       if (!(error instanceof Response)) throw error;
       let redirect = new URL(error.headers.get("Location") as string);
       expect(redirect.searchParams.get("scope")).toBe("scope_1 SCOPE2 scOpE3");
+    }
+  });
+  
+  test("should not override scope provided by derived class", async () => {
+    const DERIVED_SCOPES = "derivedScope1 DERIVED_SCOPE_2";
+    class DerivedStartegy extends OAuth2Strategy<User, TestProfile> {
+      protected authorizationParams(): URLSearchParams {
+        return new URLSearchParams([["scope", DERIVED_SCOPES]]);
+      }
+    }
+
+    let strategy = new DerivedStartegy(
+      { ...options, scope: "scope_1 SCOPE2 scOpE3" },
+      verify
+    );
+
+    let request = new Request("https://example.com/login");
+
+    try {
+      await strategy.authenticate(request, sessionStorage, BASE_OPTIONS);
+    } catch (error) {
+      if (!(error instanceof Response)) throw error;
+      let redirect = new URL(error.headers.get("Location") as string);
+      expect(redirect.searchParams.get("scope")).toBe(DERIVED_SCOPES);
     }
   });
 
