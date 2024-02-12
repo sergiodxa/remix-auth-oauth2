@@ -363,7 +363,10 @@ export class OAuth2Strategy<
     params.set("response_type", this.responseType);
     params.set("client_id", this.clientID);
     params.set("redirect_uri", this.getCallbackURL(request).toString());
-    params.set("state", state);
+    // If "state" is provided in `authorizationParams`, it will be used instead of the generated one
+    if (!params.has("state")) {
+      params.set("state", state);
+    }
     // We need to check if `authorizationParams` has not set scopes to avoid regressions on dependent libraries
     if (!params.has("scope") && this.scope) {
       params.set("scope", this.scope);
