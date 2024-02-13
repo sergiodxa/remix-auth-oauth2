@@ -31,7 +31,7 @@
     "README.md"
   ],
   "peerDependencies": {
-    "@remix-run/server-runtime": "^1.0.0 || ^2.0.0",
+    "@remix-run/server-runtime": "^2.5.0",
     "remix-auth": "^3.6.0"
   },
   "devDependencies": {
@@ -39,9 +39,9 @@
     "@babel/preset-env": "^7.22.20",
     "@babel/preset-react": "^7.22.15",
     "@babel/preset-typescript": "^7.23.0",
-    "@remix-run/node": "^2.0.1",
-    "@remix-run/react": "^2.0.1",
-    "@remix-run/server-runtime": "^2.0.1",
+    "@remix-run/node": "^2.5.1",
+    "@remix-run/react": "^2.5.1",
+    "@remix-run/server-runtime": "^2.5.1",
     "@types/debug": "^4.1.9",
     "@types/jest": "^29.5.5",
     "@types/uuid": "^9.0.4",
