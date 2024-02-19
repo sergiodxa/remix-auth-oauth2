@@ -353,7 +353,7 @@ export class OAuth2Strategy<
     if (this.callbackURL.startsWith("/")) {
       return new URL(this.callbackURL, `${protocol}://${host}`);
     }
-    return new URL(`${protocol}//${this.callbackURL}`);
+    return new URL(`${protocol}://${this.callbackURL}`);
   }
 
   private getAuthorizationURL(request: Request, state: string) {
