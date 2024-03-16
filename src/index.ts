@@ -46,6 +46,7 @@ export interface OAuth2StrategyOptions {
   scope?: string;
   responseType?: ResponseType;
   useBasicAuthenticationHeader?: boolean;
+  allowReauth?: boolean;
 }
 
 export interface OAuth2StrategyVerifyParams<
@@ -87,6 +88,7 @@ export interface OAuth2StrategyVerifyParams<
  * - `clientID`          identifies client to service provider
  * - `clientSecret`      secret used to establish ownership of the client identifier
  * - `callbackURL`       URL to which the service provider will redirect the user after obtaining authorization
+ * - `allowReauth`       allow a user to be reauthenticated if they are already logged in. Useful for prompting for extra permissions or scopes after login.
  *
  * @example
  * authenticator.use(new OAuth2Strategy(
@@ -117,6 +119,7 @@ export class OAuth2Strategy<
   protected responseType: ResponseType;
   protected useBasicAuthenticationHeader: boolean;
   protected scope?: string;
+  protected allowReauth: boolean;
 
   private sessionStateKey = "oauth2:state";
 
@@ -137,6 +140,7 @@ export class OAuth2Strategy<
     this.responseType = options.responseType ?? "code";
     this.useBasicAuthenticationHeader =
       options.useBasicAuthenticationHeader ?? false;
+    this.allowReauth = options.allowReauth ?? false;
   }
 
   async authenticate(
@@ -153,7 +157,7 @@ export class OAuth2Strategy<
     let user: User | null = session.get(options.sessionKey) ?? null;
 
     // User is already authenticated
-    if (user) {
+    if (user && !this.allowReauth) {
       debug("User is authenticated");
       return this.success(user, request, sessionStorage, options);
     }

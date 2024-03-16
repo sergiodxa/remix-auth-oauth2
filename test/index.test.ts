@@ -88,6 +88,35 @@ describe(OAuth2Strategy, () => {
     }
   });
 
+  test("if user is already in the session and allowReauth is set", async () => {
+    let strategy = new OAuth2Strategy<User, TestProfile>(
+      { ...options, allowReauth: true },
+      verify,
+    );
+
+    let session = await sessionStorage.getSession();
+    session.set("user", { id: "123" } as User);
+
+    let request = new Request("https://example.com/login", {
+      headers: { cookie: await sessionStorage.commitSession(session) },
+    });
+
+    try {
+      await strategy.authenticate(request, sessionStorage, {
+        ...BASE_OPTIONS,
+        successRedirect: "/dashboard",
+      });
+    } catch (error) {
+      if (!(error instanceof Response)) throw error;
+
+      let redirect = new URL(error.headers.get("Location") as string);
+
+      expect(error.status).toBe(302);
+
+      expect(redirect.pathname).toBe("/authorize");
+    }
+  });
+
   test("should redirect to authorization if request is not the callback", async () => {
     let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
 
