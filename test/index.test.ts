@@ -124,7 +124,7 @@ describe(OAuth2Strategy, () => {
   test("should build scope into authorization redirect when provided", async () => {
     let strategy = new OAuth2Strategy<User, TestProfile>(
       { ...options, scope: "scope_1 SCOPE2 scOpE3" },
-      verify
+      verify,
     );
 
     let request = new Request("https://example.com/login");
@@ -137,7 +137,7 @@ describe(OAuth2Strategy, () => {
       expect(redirect.searchParams.get("scope")).toBe("scope_1 SCOPE2 scOpE3");
     }
   });
-  
+
   test("should not override scope provided by derived class", async () => {
     const DERIVED_SCOPES = "derivedScope1 DERIVED_SCOPE_2";
     class DerivedStartegy extends OAuth2Strategy<User, TestProfile> {
@@ -148,7 +148,7 @@ describe(OAuth2Strategy, () => {
 
     let strategy = new DerivedStartegy(
       { ...options, scope: "scope_1 SCOPE2 scOpE3" },
-      verify
+      verify,
     );
 
     let request = new Request("https://example.com/login");
