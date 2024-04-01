@@ -1,5 +1,13 @@
 import { createCookieSessionStorage, redirect } from "@remix-run/node";
-import { vi, describe, test, expect } from "vitest";
+import {
+	describe,
+	test,
+	expect,
+	mock,
+	beforeAll,
+	afterEach,
+	afterAll,
+} from "bun:test";
 import { AuthenticateOptions, AuthorizationError } from "remix-auth";
 import {
 	OAuth2Profile,
@@ -9,6 +17,20 @@ import {
 } from "../build";
 import { catchResponse } from "./helpers";
 
+import { server } from "./mock";
+
+beforeAll(() => {
+	server.listen();
+});
+
+afterEach(() => {
+	server.resetHandlers();
+});
+
+afterAll(() => {
+	server.close();
+});
+
 const BASE_OPTIONS: AuthenticateOptions = {
 	name: "form",
 	sessionKey: "user",
@@ -16,8 +38,8 @@ const BASE_OPTIONS: AuthenticateOptions = {
 	sessionStrategyKey: "strategy",
 };
 
-describe(OAuth2Strategy, () => {
-	let verify = vi.fn();
+describe(OAuth2Strategy.name, () => {
+	let verify = mock();
 	let sessionStorage = createCookieSessionStorage({
 		cookie: { secrets: ["s3cr3t"] },
 	});
@@ -128,9 +150,10 @@ describe(OAuth2Strategy, () => {
 		);
 
 		expect(response.status).toBe(401);
-		await expect(response.json()).resolves.toEqual({
-			message: "State doesn't match.",
-		});
+
+		let data = await response.json();
+
+		expect(data).toEqual({ message: "State doesn't match." });
 	});
 
 	test("should call verify with the tokens, user profile, context and request", async () => {
@@ -147,11 +170,12 @@ describe(OAuth2Strategy, () => {
 		);
 
 		let context = { test: "it works" };
-
-		await strategy.authenticate(request, sessionStorage, {
-			...BASE_OPTIONS,
-			context,
-		});
+		await strategy
+			.authenticate(request, sessionStorage, {
+				...BASE_OPTIONS,
+				context,
+			})
+			.catch((error) => error);
 
 		expect(verify).toHaveBeenLastCalledWith({
 			tokens: {
@@ -273,7 +297,7 @@ describe(OAuth2Strategy, () => {
 
 		expect(result).toEqual(new AuthorizationError("Invalid credentials"));
 		expect((result as AuthorizationError).cause).toEqual(
-			new TypeError("Invalid credentials"),
+			new Error("Invalid credentials"),
 		);
 	});
 
