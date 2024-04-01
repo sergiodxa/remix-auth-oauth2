@@ -261,4 +261,4 @@ export class OAuth2Strategy<
 	}
 }
 
-export { OAuth2RequestError } from "oslo/oauth2";
+export { OAuth2RequestError, TokenResponseBody } from "oslo/oauth2";
