@@ -10,13 +10,14 @@
     "type": "git"
   },
   "scripts": {
-    "prepare": "npm run build",
+    "prepare": "bun run build",
     "build": "tsc --project tsconfig.json",
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "lint": "eslint --ext .ts,.tsx src/",
-    "test": "vitest",
-    "format": "prettier --write \"src/index.ts\" \"test/index.test.ts\" \"vitest.config.ts\" \"vitest.setup.ts\" \".eslintrc.cjs\"",
-    "coverage": "npm run test -- --coverage"
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest --coverage",
+    "format": "prettier --write \"src/index.ts\" \"test/index.test.ts\" \"vitest.config.ts\" \"vitest.setup.ts\" \".eslintrc.cjs\""
   },
   "keywords": [
     "remix",
@@ -46,6 +47,7 @@
     "@types/debug": "^4.1.12",
     "@typescript-eslint/eslint-plugin": "^7.4.0",
     "@typescript-eslint/parser": "^7.4.0",
+    "@vitest/coverage-v8": "^1.4.0",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.1.3",
