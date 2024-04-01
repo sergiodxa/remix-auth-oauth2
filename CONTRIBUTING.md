@@ -4,7 +4,7 @@
 
 Run `bun install` to install the dependencies.
 
-Run the tests with `bun run test`.
+Run the tests with `bun test`.
 
 Run the linter with `bun run lint`.
 
