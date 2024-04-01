@@ -18,6 +18,17 @@ A strategy to use and implement OAuth2 framework for authentication with federat
 npm add remix-auth-oauth2
 ```
 
+> ![WARNING]
+> If you're using versions of Node.js previous to v20, you will need to make the WebCrypto API globally available to use this package.
+>
+> ```ts
+> import { webcrypto } from "node:crypto";
+> globalThis.crypto = webcrypto;
+> ```
+>
+> Or enable the experimaental flag `--experimental-global-webcrypto` when running your process.
+> For v20 or greater, this is not necessary.
+
 ### Directly
 
 You can use this strategy by adding it to your authenticator instance and configuring the correct endpoints.
