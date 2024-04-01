@@ -14,7 +14,7 @@
 		"build": "tsc --project tsconfig.json",
 		"typecheck": "tsc --project tsconfig.json --noEmit",
 		"lint": "eslint --ext .ts,.tsx src/",
-		"format": "prettier --write"
+		"format": "prettier --write ."
 	},
 	"keywords": [
 		"remix",
