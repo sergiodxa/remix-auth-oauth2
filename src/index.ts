@@ -16,7 +16,7 @@ import {
 	TokenResponseBody,
 } from "oslo/oauth2";
 
-let debug = createDebug("OAuth2Strategy:Oslo");
+let debug = createDebug("OAuth2Strategy");
 
 export interface OAuth2Profile {
 	provider: string;
