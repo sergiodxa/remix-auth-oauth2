@@ -4,12 +4,12 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  test: {
-    environment: "edge-runtime",
-    setupFiles: ["./vitest.setup.ts"],
-    coverage: {
-      all: true,
-      include: ["src/**/*"],
-    },
-  },
+	test: {
+		environment: "edge-runtime",
+		setupFiles: ["./vitest.setup.ts"],
+		coverage: {
+			all: true,
+			include: ["src/**/*"],
+		},
+	},
 });

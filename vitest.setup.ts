@@ -2,13 +2,13 @@ import { afterAll, afterEach, beforeAll } from "vitest";
 import { server } from "./test/mock";
 
 beforeAll(() => {
-  server.listen();
+	server.listen();
 });
 
 afterEach(() => {
-  server.resetHandlers();
+	server.resetHandlers();
 });
 
 afterAll(() => {
-  server.close();
+	server.close();
 });
