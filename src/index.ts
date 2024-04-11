@@ -82,9 +82,9 @@ export class OAuth2Strategy<
 
 		this.client = new OAuth2Client(
 			options.clientId,
-			options.authorizationEndpoint.toString(),
-			options.tokenEndpoint.toString(),
-			{ redirectURI: options.redirectURI.toString() },
+			new URL(options.authorizationEndpoint).toString(),
+			new URL(options.tokenEndpoint).toString(),
+			{ redirectURI: new URL(options.redirectURI).toString() },
 		);
 	}
 
