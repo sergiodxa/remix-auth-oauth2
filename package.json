@@ -16,6 +16,9 @@
 		"lint": "eslint --ext .ts,.tsx src/",
 		"format": "prettier --write ."
 	},
+	"engines": {
+		"node": ">=20.0.0"
+	},
 	"keywords": [
 		"remix",
 		"remix-auth",
