@@ -49,8 +49,11 @@ export interface OAuth2StrategyOptions {
 	clientSecret?: string;
 }
 
-export interface OAuth2StrategyVerifyParams<Profile extends OAuth2Profile> {
-	tokens: TokenResponseBody;
+export interface OAuth2StrategyVerifyParams<
+	Profile extends OAuth2Profile,
+	ExtraTokenParams extends Record<string, unknown> = Record<string, never>,
+> {
+	tokens: TokenResponseBody & ExtraTokenParams;
 	profile: Profile;
 	request: Request;
 	context?: AppLoadContext;
@@ -59,7 +62,8 @@ export interface OAuth2StrategyVerifyParams<Profile extends OAuth2Profile> {
 export class OAuth2Strategy<
 	User,
 	Profile extends OAuth2Profile,
-> extends Strategy<User, OAuth2StrategyVerifyParams<Profile>> {
+	ExtraParams extends Record<string, unknown> = Record<string, never>,
+> extends Strategy<User, OAuth2StrategyVerifyParams<Profile, ExtraParams>> {
 	name = "oauth2";
 
 	protected client: OAuth2Client;
@@ -69,7 +73,10 @@ export class OAuth2Strategy<
 
 	constructor(
 		protected options: OAuth2StrategyOptions,
-		verify: StrategyVerifyCallback<User, OAuth2StrategyVerifyParams<Profile>>,
+		verify: StrategyVerifyCallback<
+			User,
+			OAuth2StrategyVerifyParams<Profile, ExtraParams>
+		>,
 	) {
 		super(verify);
 
@@ -167,11 +174,12 @@ export class OAuth2Strategy<
 
 		try {
 			debug("Validating authorization code");
-			let tokens = await this.client.validateAuthorizationCode(code, {
-				codeVerifier,
-				authenticateWith: this.options.authenticateWith,
-				credentials: this.options.clientSecret,
-			});
+			let tokens: TokenResponseBody & ExtraParams =
+				await this.client.validateAuthorizationCode(code, {
+					codeVerifier,
+					authenticateWith: this.options.authenticateWith,
+					credentials: this.options.clientSecret,
+				});
 
 			debug("Fetching the user profile");
 			let profile = await this.userProfile(tokens);
