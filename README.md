@@ -37,7 +37,11 @@ You can use this strategy by adding it to your authenticator instance and config
 export let authenticator = new Authenticator<User>(sessionStorage);
 
 authenticator.use(
-	new OAuth2Strategy(
+	new OAuth2Strategy<
+		User,
+		{ providers: "provider-name" },
+		{ id_token: string }
+	>(
 		{
 			clientId: CLIENT_ID,
 			authorizationEndpoint: "https://provider.com/oauth2/authorize",
@@ -65,19 +69,50 @@ authenticator.use(
 The strategy exposes a public `refreshToken` method that you can use to refresh the access token.
 
 ```ts
-const strategy = new OAuth2Strategy<User>(options, verify);
+let strategy = new OAuth2Strategy<User>(options, verify);
 let tokens = await strategy.refreshToken(refreshToken);
 ```
 
-How you store the refresh tokens to `strategy.refreshToken` and what you do with the `tokens` object after it is up to you.
+The refresh token is part of the `tokens` object the varify callback receives. How you store it to call `strategy.refreshToken` and what you do with the `tokens` object after it is up to you.
+
+The most common approach would be to store the refresh token in the user data and then update the session after refreshing the token.
+
+```ts
+authenticator.use(
+	new OAuth2Strategy<User>(
+		options,
+		async ({ tokens, profile, context, request }) => {
+			let user = await getUser(tokens, profile, context, request);
+			let { access_token: accessToken, refresh_token: refreshToken } = tokens;
+			return { ...user, accessToken, refreshToken };
+		},
+	),
+);
+
+// later in your code
+let user = await authenticator.isAuthenticated(request, {
+	failureRedirect: "/login",
+});
+let session = await sessionStorage.getSession(request.headers.get("cookie"));
+
+let tokens = await strategy.refreshToken(user.refreshToken);
+
+session.set(authenticator.sessionKey, {
+	...user,
+	accessToken: tokens.accessToken,
+	refreshToken: tokens.refreshToken,
+});
+
+// commit the session here
+```
 
 ### Extending it
 
-You can use this strategy as a base class for another strategy using the OAuth2 framework. That way, you wouldn't need to implement the whole OAuth2 flow yourself.
+You can use this strategy as a base class for another strategy using the OAuth2 framework. That way, you wouldn't need to implement the whole OAuth2 flow yourself in your custom strategy.
 
 The `OAuth2Strategy` will handle the whole flow for you and let you replace parts of it where you need.
 
-Let's see how the `Auth0Strategy` is implemented using the `OAuth2Strategy` as a base.
+Let's see how an `Auth0Strategy` is implemented using the `OAuth2Strategy` as a base.
 
 ```ts
 // We need to import from Remix Auth the type of the strategy verify callback
@@ -140,15 +175,23 @@ export interface Auth0Profile extends OAuth2Profile {
 	};
 }
 
+interface Auth0ExtraParams extends Record<string, unknown> {
+	id_token: string;
+}
+
 // And we create our strategy extending the OAuth2Strategy, we also need to
 // pass the User as we did on the FormStrategy, we pass the Auth0Profile and the
 // extra params
-export class Auth0Strategy<User> extends OAuth2Strategy<User, Auth0Profile> {
+export class Auth0Strategy<User> extends OAuth2Strategy<
+	User,
+	Auth0Profile,
+	Auth0ExtraParams
+> {
 	// The OAuth2Strategy already has a name but we override it to be specific of
 	// the service we are using
 	name = "auth0";
 
-	private userInfoURL: string;
+	private userInfoEndpoint: string;
 
 	// We receive our custom options and our verify callback
 	constructor(
@@ -157,7 +200,7 @@ export class Auth0Strategy<User> extends OAuth2Strategy<User, Auth0Profile> {
 		// the User type and the OAuth2StrategyVerifyParams with the Auth0Profile.
 		verify: StrategyVerifyCallback<
 			User,
-			OAuth2StrategyVerifyParams<Auth0Profile>
+			OAuth2StrategyVerifyParams<Auth0Profile, Auth0ExtraParams>
 		>,
 	) {
 		// And we pass the options to the super constructor using our own options
@@ -180,8 +223,8 @@ export class Auth0Strategy<User> extends OAuth2Strategy<User, Auth0Profile> {
 	// URLSearchParams with custom params we want to send to the authorizationURL.
 	// Here we add the scope so Auth0 can use it, you can pass any extra param
 	// you need to send to the authorizationURL here base on your provider.
-	protected authorizationParams(params: URLSearchParams) {
-		if (this.audience) params.audience = this.audience;
+	protected authorizationParams(params: URLSearchParams): URLSearchParams {
+		if (this.audience) params.set("audience", this.audience);
 		return params;
 	}
 
@@ -189,7 +232,7 @@ export class Auth0Strategy<User> extends OAuth2Strategy<User, Auth0Profile> {
 	// Here we fetch a Auth0 specific URL, get the profile data, and build the
 	// object based on the Auth0Profile interface.
 	protected async userProfile(
-		tokens: TokenResponseBody,
+		tokens: TokenResponseBody & Auth0ExtraParams,
 	): Promise<Auth0Profile> {
 		let response = await fetch(this.userInfoEndpoint, {
 			headers: { Authorization: `Bearer ${tokens.access_token}` },
