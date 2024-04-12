@@ -11,6 +11,7 @@ import {
 import { AuthenticateOptions, AuthorizationError } from "remix-auth";
 import {
 	OAuth2Profile,
+	OAuth2RequestError,
 	OAuth2Strategy,
 	OAuth2StrategyOptions,
 	OAuth2StrategyVerifyParams,
@@ -67,7 +68,7 @@ describe(OAuth2Strategy.name, () => {
 		expect(strategy.name).toBe("oauth2");
 	});
 
-	test("redirects to authorization url if there's no code", async () => {
+	test("redirects to authorization url if there's no state", async () => {
 		let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
 
 		let request = new Request("https://remix.auth/login");
@@ -100,21 +101,6 @@ describe(OAuth2Strategy.name, () => {
 		);
 
 		expect(redirect.searchParams.get("code_challenge_method")).toBe("plain");
-	});
-
-	test("throws if there's no state in the url", async () => {
-		let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
-
-		let request = new Request("https://example.com/callback?code=random-code");
-
-		let response = await catchResponse(
-			strategy.authenticate(request, sessionStorage, BASE_OPTIONS),
-		);
-
-		expect(response.status).toBe(401);
-		await expect(response.json()).resolves.toEqual({
-			message: "Missing state on URL.",
-		});
 	});
 
 	test("throws if there's no state in the session", async () => {
@@ -156,7 +142,7 @@ describe(OAuth2Strategy.name, () => {
 		expect(data).toEqual({ message: "State doesn't match." });
 	});
 
-	test("should call verify with the tokens, user profile, context and request", async () => {
+	test("calls verify with the tokens, user profile, context and request", async () => {
 		let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
 
 		let session = await sessionStorage.getSession();
@@ -194,7 +180,7 @@ describe(OAuth2Strategy.name, () => {
 		>);
 	});
 
-	test("should return the result of verify", async () => {
+	test("returns the result of verify", async () => {
 		let user = { id: "123" };
 		verify.mockResolvedValueOnce(user);
 
@@ -217,7 +203,7 @@ describe(OAuth2Strategy.name, () => {
 		expect(response).toEqual(user);
 	});
 
-	test("should throw a response with user in session and redirect to /", async () => {
+	test("throws a response with user in session and redirect to /", async () => {
 		let user = { id: "123" };
 		verify.mockResolvedValueOnce(user);
 
@@ -248,7 +234,7 @@ describe(OAuth2Strategy.name, () => {
 		expect(session.get("user")).toEqual(user);
 	});
 
-	test("should pass error as cause on failure", async () => {
+	test("pass error as cause on failure", async () => {
 		verify.mockRejectedValueOnce(new TypeError("Invalid credentials"));
 
 		let strategy = new OAuth2Strategy(options, verify);
@@ -276,7 +262,7 @@ describe(OAuth2Strategy.name, () => {
 		);
 	});
 
-	test("should pass generate error from string on failure", async () => {
+	test("pass generate error from string on failure", async () => {
 		verify.mockRejectedValueOnce("Invalid credentials");
 
 		let strategy = new OAuth2Strategy(options, verify);
@@ -304,7 +290,7 @@ describe(OAuth2Strategy.name, () => {
 		);
 	});
 
-	test("should create Unknown error if thrown value is not Error or string", async () => {
+	test("creates Unknown error if thrown value is not Error or string", async () => {
 		verify.mockRejectedValueOnce({ message: "Invalid email address" });
 
 		let strategy = new OAuth2Strategy(options, verify);
@@ -357,5 +343,28 @@ describe(OAuth2Strategy.name, () => {
 
 		expect(response.status).toEqual(302);
 		expect(response.headers.get("location")).toEqual("/test");
+	});
+
+	test("throws if there's an error in the url", async () => {
+		let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
+
+		let request = new Request(
+			"https://example.com/callback?error=invalid_request",
+		);
+
+		expect(() =>
+			strategy.authenticate(request, sessionStorage, {
+				...BASE_OPTIONS,
+				throwOnError: true,
+			}),
+		).toThrowError(
+			// @ts-expect-error - This is a test
+			new AuthorizationError("Error during authentication", {
+				cause: new OAuth2RequestError(request, {
+					error: "invalid_request",
+					error_description: undefined,
+				}),
+			}),
+		);
 	});
 });

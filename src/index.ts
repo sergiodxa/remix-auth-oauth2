@@ -14,6 +14,7 @@ import {
 	generateCodeVerifier,
 	generateState,
 	TokenResponseBody,
+	OAuth2RequestError,
 } from "oslo/oauth2";
 
 let debug = createDebug("OAuth2Strategy");
@@ -96,13 +97,28 @@ export class OAuth2Strategy<
 		debug("Request URL", request.url);
 
 		let url = new URL(request.url);
+
+		if (url.searchParams.has("error")) {
+			return this.failure(
+				"Error during authentication",
+				request,
+				sessionStorage,
+				options,
+				new OAuth2RequestError(request, {
+					error: url.searchParams.get("error") ?? undefined,
+					error_description:
+						url.searchParams.get("error_description") ?? undefined,
+				}),
+			);
+		}
+
 		let session = await sessionStorage.getSession(
 			request.headers.get("Cookie"),
 		);
 
-		let code = url.searchParams.get("code");
+		let stateUrl = url.searchParams.get("state");
 
-		if (!code) {
+		if (!stateUrl) {
 			debug("No code found in the URL, redirecting to authorization endpoint");
 
 			let state = generateState();
@@ -134,16 +150,30 @@ export class OAuth2Strategy<
 			});
 		}
 
-		let stateUrl = url.searchParams.get("state");
+		let code = url.searchParams.get("code");
 		let codeVerifier = session.get(this.sessionCodeVerifierKey);
 
-		if (!stateUrl) {
-			return await this.failure(
-				"Missing state on URL.",
+		if (!code && url.searchParams.has("error")) {
+			return this.failure(
+				"Error during authentication",
 				request,
 				sessionStorage,
 				options,
-				new Error("Missing state on URL."),
+				new OAuth2RequestError(request, {
+					error: url.searchParams.get("error") ?? undefined,
+					error_description:
+						url.searchParams.get("error_description") ?? undefined,
+				}),
+			);
+		}
+
+		if (!code) {
+			return this.failure(
+				"Missing code in the URL",
+				request,
+				sessionStorage,
+				options,
+				new Error("Missing code in the URL"),
 			);
 		}
 
@@ -174,12 +204,13 @@ export class OAuth2Strategy<
 
 		try {
 			debug("Validating authorization code");
-			let tokens: TokenResponseBody & ExtraParams =
-				await this.client.validateAuthorizationCode(code, {
-					codeVerifier,
-					authenticateWith: this.options.authenticateWith,
-					credentials: this.options.clientSecret,
-				});
+			let tokens = await this.client.validateAuthorizationCode<
+				TokenResponseBody & ExtraParams
+			>(code, {
+				codeVerifier,
+				authenticateWith: this.options.authenticateWith,
+				credentials: this.options.clientSecret,
+			});
 
 			debug("Fetching the user profile");
 			let profile = await this.userProfile(tokens);
