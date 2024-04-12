@@ -14,10 +14,10 @@ import {
 	OAuth2Strategy,
 	OAuth2StrategyOptions,
 	OAuth2StrategyVerifyParams,
-} from "../build";
-import { catchResponse } from "./helpers";
+} from ".";
+import { catchResponse } from "./test/helpers";
 
-import { server } from "./mock";
+import { server } from "./test/mock";
 
 beforeAll(() => {
 	server.listen();
@@ -188,7 +188,10 @@ describe(OAuth2Strategy.name, () => {
 			profile: { provider: "oauth2" },
 			context,
 			request,
-		} satisfies OAuth2StrategyVerifyParams<OAuth2Profile>);
+		} satisfies OAuth2StrategyVerifyParams<
+			OAuth2Profile,
+			Record<string, unknown>
+		>);
 	});
 
 	test("should return the result of verify", async () => {
