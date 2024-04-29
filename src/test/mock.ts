@@ -1,5 +1,5 @@
-import { setupServer } from "msw/node";
 import { http, HttpResponse } from "msw";
+import { setupServer } from "msw/node";
 import { TokenResponseBody } from "oslo/oauth2";
 
 export const server = setupServer(

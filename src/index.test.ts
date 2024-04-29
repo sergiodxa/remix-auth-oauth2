@@ -1,13 +1,13 @@
-import { createCookieSessionStorage, redirect } from "@remix-run/node";
 import {
+	afterAll,
+	afterEach,
+	beforeAll,
 	describe,
-	test,
 	expect,
 	mock,
-	beforeAll,
-	afterEach,
-	afterAll,
+	test,
 } from "bun:test";
+import { createCookieSessionStorage, redirect } from "@remix-run/node";
 import { AuthenticateOptions, AuthorizationError } from "remix-auth";
 import {
 	OAuth2Profile,
@@ -77,6 +77,7 @@ describe(OAuth2Strategy.name, () => {
 			strategy.authenticate(request, sessionStorage, BASE_OPTIONS),
 		);
 
+		// biome-ignore lint/style/noNonNullAssertion: This is a test
 		let redirect = new URL(response.headers.get("location")!);
 
 		let session = await sessionStorage.getSession(

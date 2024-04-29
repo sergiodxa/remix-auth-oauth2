@@ -37,30 +37,30 @@ You can use this strategy by adding it to your authenticator instance and config
 export let authenticator = new Authenticator<User>(sessionStorage);
 
 authenticator.use(
-	new OAuth2Strategy<
-		User,
-		{ providers: "provider-name" },
-		{ id_token: string }
-	>(
-		{
-			clientId: CLIENT_ID,
-			authorizationEndpoint: "https://provider.com/oauth2/authorize",
-			tokenEndpoint: "https://provider.com/oauth2/token",
-			redirectURI: "https://example.app/auth/callback",
-			scopes: ["openid", "email", "profile"], // optional
-			codeChallengeMethod: "S256", // optional
-			authenticateWith: "request_body", // optional
-			clientSecret: CLIENT_SECRET, // optional
-		},
-		async ({ tokens, profile, context, request }) => {
-			// here you can use the params above to get the user and return it
-			// what you do inside this and how you find the user is up to you
-			return await getUser(tokens, profile, context, request);
-		},
-	),
-	// this is optional, but if you setup more than one OAuth2 instance you will
-	// need to set a custom name to each one
-	"provider-name",
+  new OAuth2Strategy<
+    User,
+    { providers: "provider-name" },
+    { id_token: string }
+  >(
+    {
+      clientId: CLIENT_ID,
+      authorizationEndpoint: "https://provider.com/oauth2/authorize",
+      tokenEndpoint: "https://provider.com/oauth2/token",
+      redirectURI: "https://example.app/auth/callback",
+      scopes: ["openid", "email", "profile"], // optional
+      codeChallengeMethod: "S256", // optional
+      authenticateWith: "request_body", // optional
+      clientSecret: CLIENT_SECRET, // optional
+    },
+    async ({ tokens, profile, context, request }) => {
+      // here you can use the params above to get the user and return it
+      // what you do inside this and how you find the user is up to you
+      return await getUser(tokens, profile, context, request);
+    },
+  ),
+  // this is optional, but if you setup more than one OAuth2 instance you will
+  // need to set a custom name to each one
+  "provider-name",
 );
 ```
 
@@ -79,28 +79,28 @@ The most common approach would be to store the refresh token in the user data an
 
 ```ts
 authenticator.use(
-	new OAuth2Strategy<User>(
-		options,
-		async ({ tokens, profile, context, request }) => {
-			let user = await getUser(tokens, profile, context, request);
-			let { access_token: accessToken, refresh_token: refreshToken } = tokens;
-			return { ...user, accessToken, refreshToken };
-		},
-	),
+  new OAuth2Strategy<User>(
+    options,
+    async ({ tokens, profile, context, request }) => {
+      let user = await getUser(tokens, profile, context, request);
+      let { access_token: accessToken, refresh_token: refreshToken } = tokens;
+      return { ...user, accessToken, refreshToken };
+    },
+  ),
 );
 
 // later in your code
 let user = await authenticator.isAuthenticated(request, {
-	failureRedirect: "/login",
+  failureRedirect: "/login",
 });
 let session = await sessionStorage.getSession(request.headers.get("cookie"));
 
 let tokens = await strategy.refreshToken(user.refreshToken);
 
 session.set(authenticator.sessionKey, {
-	...user,
-	accessToken: tokens.accessToken,
-	refreshToken: tokens.refreshToken,
+  ...user,
+  accessToken: tokens.accessToken,
+  refreshToken: tokens.refreshToken,
 });
 
 // commit the session here
@@ -120,142 +120,142 @@ import type { StrategyVerifyCallback } from "remix-auth";
 
 // We need to import the OAuth2Strategy, the verify params and the profile interfaces
 import type {
-	OAuth2Profile,
-	OAuth2StrategyVerifyParams,
-	TokenResponseBody,
+  OAuth2Profile,
+  OAuth2StrategyVerifyParams,
+  TokenResponseBody,
 } from "remix-auth-oauth2";
 
 import { OAuth2Strategy } from "remix-auth-oauth2";
 
 // These are the custom options we need from the developer to use the strategy
 export interface Auth0StrategyOptions
-	extends Omit<
-		OAuth2StrategyOptions,
-		"authorizationEndpoint" | "tokenEndpoint"
-	> {
-	domain: string;
-	audience?: string;
+  extends Omit<
+    OAuth2StrategyOptions,
+    "authorizationEndpoint" | "tokenEndpoint"
+  > {
+  domain: string;
+  audience?: string;
 }
 
 // The Auth0Profile extends the OAuth2Profile with the extra params and mark
 // some of them as required
 export interface Auth0Profile extends OAuth2Profile {
-	id: string;
-	displayName: string;
-	name: {
-		familyName: string;
-		givenName: string;
-		middleName: string;
-	};
-	emails: Array<{ value: string }>;
-	photos: Array<{ value: string }>;
-	_json: {
-		sub: string;
-		name: string;
-		given_name: string;
-		family_name: string;
-		middle_name: string;
-		nickname: string;
-		preferred_username: string;
-		profile: string;
-		picture: string;
-		website: string;
-		email: string;
-		email_verified: boolean;
-		gender: string;
-		birthdate: string;
-		zoneinfo: string;
-		locale: string;
-		phone_number: string;
-		phone_number_verified: boolean;
-		address: {
-			country: string;
-		};
-		updated_at: string;
-	};
+  id: string;
+  displayName: string;
+  name: {
+    familyName: string;
+    givenName: string;
+    middleName: string;
+  };
+  emails: Array<{ value: string }>;
+  photos: Array<{ value: string }>;
+  _json: {
+    sub: string;
+    name: string;
+    given_name: string;
+    family_name: string;
+    middle_name: string;
+    nickname: string;
+    preferred_username: string;
+    profile: string;
+    picture: string;
+    website: string;
+    email: string;
+    email_verified: boolean;
+    gender: string;
+    birthdate: string;
+    zoneinfo: string;
+    locale: string;
+    phone_number: string;
+    phone_number_verified: boolean;
+    address: {
+      country: string;
+    };
+    updated_at: string;
+  };
 }
 
 interface Auth0ExtraParams extends Record<string, unknown> {
-	id_token: string;
+  id_token: string;
 }
 
 // And we create our strategy extending the OAuth2Strategy, we also need to
 // pass the User as we did on the FormStrategy, we pass the Auth0Profile and the
 // extra params
 export class Auth0Strategy<User> extends OAuth2Strategy<
-	User,
-	Auth0Profile,
-	Auth0ExtraParams
+  User,
+  Auth0Profile,
+  Auth0ExtraParams
 > {
-	// The OAuth2Strategy already has a name but we override it to be specific of
-	// the service we are using
-	name = "auth0";
+  // The OAuth2Strategy already has a name but we override it to be specific of
+  // the service we are using
+  name = "auth0";
 
-	private userInfoEndpoint: string;
+  private userInfoEndpoint: string;
 
-	// We receive our custom options and our verify callback
-	constructor(
-		{ domain, audience, ...options }: Auth0StrategyOptions,
-		// Here we type the verify callback as a StrategyVerifyCallback receiving
-		// the User type and the OAuth2StrategyVerifyParams with the Auth0Profile.
-		verify: StrategyVerifyCallback<
-			User,
-			OAuth2StrategyVerifyParams<Auth0Profile, Auth0ExtraParams>
-		>,
-	) {
-		// And we pass the options to the super constructor using our own options
-		// to generate them, this was we can ask less configuration to the developer
-		// using our strategy
-		super(
-			{
-				authorizationEndpoint: `https://${domain}/authorize`,
-				tokenEndpoint: `https://${domain}/oauth/token`,
-				...options,
-			},
-			verify,
-		);
+  // We receive our custom options and our verify callback
+  constructor(
+    { domain, audience, ...options }: Auth0StrategyOptions,
+    // Here we type the verify callback as a StrategyVerifyCallback receiving
+    // the User type and the OAuth2StrategyVerifyParams with the Auth0Profile.
+    verify: StrategyVerifyCallback<
+      User,
+      OAuth2StrategyVerifyParams<Auth0Profile, Auth0ExtraParams>
+    >,
+  ) {
+    // And we pass the options to the super constructor using our own options
+    // to generate them, this was we can ask less configuration to the developer
+    // using our strategy
+    super(
+      {
+        authorizationEndpoint: `https://${domain}/authorize`,
+        tokenEndpoint: `https://${domain}/oauth/token`,
+        ...options,
+      },
+      verify,
+    );
 
-		this.userInfoEndpoint = `https://${domain}/userinfo`;
-		this.audience = audience;
-	}
+    this.userInfoEndpoint = `https://${domain}/userinfo`;
+    this.audience = audience;
+  }
 
-	// We override the protected authorizationParams method to return a new
-	// URLSearchParams with custom params we want to send to the authorizationURL.
-	// Here we add the scope so Auth0 can use it, you can pass any extra param
-	// you need to send to the authorizationURL here base on your provider.
-	protected authorizationParams(params: URLSearchParams): URLSearchParams {
-		if (this.audience) params.set("audience", this.audience);
-		return params;
-	}
+  // We override the protected authorizationParams method to return a new
+  // URLSearchParams with custom params we want to send to the authorizationURL.
+  // Here we add the scope so Auth0 can use it, you can pass any extra param
+  // you need to send to the authorizationURL here base on your provider.
+  protected authorizationParams(params: URLSearchParams): URLSearchParams {
+    if (this.audience) params.set("audience", this.audience);
+    return params;
+  }
 
-	// We also override how to use the accessToken to get the profile of the user.
-	// Here we fetch a Auth0 specific URL, get the profile data, and build the
-	// object based on the Auth0Profile interface.
-	protected async userProfile(
-		tokens: TokenResponseBody & Auth0ExtraParams,
-	): Promise<Auth0Profile> {
-		let response = await fetch(this.userInfoEndpoint, {
-			headers: { Authorization: `Bearer ${tokens.access_token}` },
-		});
+  // We also override how to use the accessToken to get the profile of the user.
+  // Here we fetch a Auth0 specific URL, get the profile data, and build the
+  // object based on the Auth0Profile interface.
+  protected async userProfile(
+    tokens: TokenResponseBody & Auth0ExtraParams,
+  ): Promise<Auth0Profile> {
+    let response = await fetch(this.userInfoEndpoint, {
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
+    });
 
-		let data: Auth0Profile["_json"] = await response.json();
+    let data: Auth0Profile["_json"] = await response.json();
 
-		let profile: Auth0Profile = {
-			provider: "auth0",
-			displayName: data.name,
-			id: data.sub,
-			name: {
-				familyName: data.family_name,
-				givenName: data.given_name,
-				middleName: data.middle_name,
-			},
-			emails: [{ value: data.email }],
-			photos: [{ value: data.picture }],
-			_json: data,
-		};
+    let profile: Auth0Profile = {
+      provider: "auth0",
+      displayName: data.name,
+      id: data.sub,
+      name: {
+        familyName: data.family_name,
+        givenName: data.given_name,
+        middleName: data.middle_name,
+      },
+      emails: [{ value: data.email }],
+      photos: [{ value: data.picture }],
+      _json: data,
+    };
 
-		return profile;
-	}
+    return profile;
+  }
 }
 ```
 

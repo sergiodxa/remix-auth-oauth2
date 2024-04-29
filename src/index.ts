@@ -1,21 +1,21 @@
 import {
 	AppLoadContext,
-	redirect,
 	SessionStorage,
+	redirect,
 } from "@remix-run/server-runtime";
 import createDebug from "debug";
+import {
+	OAuth2Client,
+	OAuth2RequestError,
+	TokenResponseBody,
+	generateCodeVerifier,
+	generateState,
+} from "oslo/oauth2";
 import {
 	AuthenticateOptions,
 	Strategy,
 	StrategyVerifyCallback,
 } from "remix-auth";
-import {
-	OAuth2Client,
-	generateCodeVerifier,
-	generateState,
-	TokenResponseBody,
-	OAuth2RequestError,
-} from "oslo/oauth2";
 
 let debug = createDebug("OAuth2Strategy");
 
@@ -300,5 +300,5 @@ export class OAuth2Strategy<
 	}
 }
 
-export { OAuth2RequestError } from "oslo/oauth2";
+export { OAuth2RequestError };
 export type { TokenResponseBody } from "oslo/oauth2";
