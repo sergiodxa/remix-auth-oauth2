@@ -13,9 +13,8 @@
 		"prepare": "bun run build",
 		"build": "tsc --project tsconfig.json",
 		"typecheck": "tsc --project tsconfig.json --noEmit",
-		"check": "biome check .",
-		"lint": "biome lint --apply .",
-		"format": "biome format --write ."
+		"quality": "biome check .",
+		"quality:fix": "biome check . --apply"
 	},
 	"engines": {
 		"node": "^18.0.0 || ^20.0.0 || >=20.0.0"
