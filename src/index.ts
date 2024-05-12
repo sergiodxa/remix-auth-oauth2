@@ -1,16 +1,21 @@
 import {
+	AuthorizationCodeAccessTokenRequestContext,
+	AuthorizationCodeAuthorizationURL,
+	OAuth2RequestError,
+	RefreshRequestContext,
+	TokenResponseBody,
+	TokenRevocationRequestContext,
+	generateCodeVerifier,
+	generateState,
+	sendTokenRequest,
+	sendTokenRevocationRequest,
+} from "@oslojs/oauth2";
+import {
 	AppLoadContext,
 	SessionStorage,
 	redirect,
 } from "@remix-run/server-runtime";
 import createDebug from "debug";
-import {
-	OAuth2Client,
-	OAuth2RequestError,
-	TokenResponseBody,
-	generateCodeVerifier,
-	generateState,
-} from "oslo/oauth2";
 import {
 	AuthenticateOptions,
 	Strategy,
@@ -39,15 +44,16 @@ type URLConstructor = ConstructorParameters<typeof URL>[0];
 
 export interface OAuth2StrategyOptions {
 	clientId: string;
+	clientSecret: string;
 	authorizationEndpoint: URLConstructor;
 	tokenEndpoint: URLConstructor;
 	redirectURI: URLConstructor;
+	tokenRevocationEndpoint?: URLConstructor;
 
 	codeChallengeMethod?: "S256" | "plain";
 	scopes?: string[];
 
 	authenticateWith?: "http_basic_auth" | "request_body";
-	clientSecret?: string;
 }
 
 export interface OAuth2StrategyVerifyParams<
@@ -67,8 +73,6 @@ export class OAuth2Strategy<
 > extends Strategy<User, OAuth2StrategyVerifyParams<Profile, ExtraParams>> {
 	name = "oauth2";
 
-	protected client: OAuth2Client;
-
 	protected sessionStateKey = "oauth2:state";
 	protected sessionCodeVerifierKey = "oauth2:codeVerifier";
 
@@ -80,13 +84,6 @@ export class OAuth2Strategy<
 		>,
 	) {
 		super(verify);
-
-		this.client = new OAuth2Client(
-			options.clientId,
-			new URL(options.authorizationEndpoint).toString(),
-			new URL(options.tokenEndpoint).toString(),
-			{ redirectURI: new URL(options.redirectURI).toString() },
-		);
 	}
 
 	async authenticate(
@@ -100,14 +97,15 @@ export class OAuth2Strategy<
 
 		if (url.searchParams.has("error")) {
 			return this.failure(
-				"Error during authentication",
+				"Error on authentication",
 				request,
 				sessionStorage,
 				options,
-				new OAuth2RequestError(request, {
+				new OAuth2Error(request, {
 					error: url.searchParams.get("error") ?? undefined,
 					error_description:
 						url.searchParams.get("error_description") ?? undefined,
+					error_uri: url.searchParams.get("error_uri") ?? undefined,
 				}),
 			);
 		}
@@ -119,7 +117,7 @@ export class OAuth2Strategy<
 		let stateUrl = url.searchParams.get("state");
 
 		if (!stateUrl) {
-			debug("No code found in the URL, redirecting to authorization endpoint");
+			debug("No state found in the URL, redirecting to authorization endpoint");
 
 			let state = generateState();
 			session.set(this.sessionStateKey, state);
@@ -131,12 +129,22 @@ export class OAuth2Strategy<
 
 			debug("Code verifier", codeVerifier);
 
-			let authorizationURL = await this.client.createAuthorizationURL({
-				state,
-				codeVerifier,
-				codeChallengeMethod: this.options.codeChallengeMethod,
-				scopes: this.options.scopes,
-			});
+			let authorizationURL = new AuthorizationCodeAuthorizationURL(
+				this.options.authorizationEndpoint.toString(),
+				this.options.clientId,
+			);
+
+			authorizationURL.setRedirectURI(this.options.redirectURI.toString());
+			authorizationURL.setState(state);
+
+			if (this.options.scopes)
+				authorizationURL.appendScopes(...this.options.scopes);
+
+			if (this.options.codeChallengeMethod === "S256") {
+				authorizationURL.setS256CodeChallenge(codeVerifier);
+			} else if (this.options.codeChallengeMethod === "plain") {
+				authorizationURL.setPlainCodeChallenge(codeVerifier);
+			}
 
 			// Extend authorization URL with extra non-standard params
 			authorizationURL.search = this.authorizationParams(
@@ -146,7 +154,9 @@ export class OAuth2Strategy<
 			debug("Authorization URL", authorizationURL.toString());
 
 			throw redirect(authorizationURL.toString(), {
-				headers: { "Set-Cookie": await sessionStorage.commitSession(session) },
+				headers: {
+					"Set-Cookie": await sessionStorage.commitSession(session),
+				},
 			});
 		}
 
@@ -159,10 +169,11 @@ export class OAuth2Strategy<
 				request,
 				sessionStorage,
 				options,
-				new OAuth2RequestError(request, {
+				new OAuth2Error(request, {
 					error: url.searchParams.get("error") ?? undefined,
 					error_description:
 						url.searchParams.get("error_description") ?? undefined,
+					error_uri: url.searchParams.get("error_uri") ?? undefined,
 				}),
 			);
 		}
@@ -173,7 +184,7 @@ export class OAuth2Strategy<
 				request,
 				sessionStorage,
 				options,
-				new Error("Missing code in the URL"),
+				new ReferenceError("Missing code in the URL"),
 			);
 		}
 
@@ -185,7 +196,7 @@ export class OAuth2Strategy<
 				request,
 				sessionStorage,
 				options,
-				new Error("Missing state on session."),
+				new ReferenceError("Missing state on session."),
 			);
 		}
 
@@ -194,23 +205,38 @@ export class OAuth2Strategy<
 			session.unset(this.sessionStateKey);
 		} else {
 			return await this.failure(
-				"State doesn't match.",
+				"State in URL doesn't match state in session.",
 				request,
 				sessionStorage,
 				options,
-				new Error("State doesn't match."),
+				new RangeError("State in URL doesn't match state in session."),
 			);
 		}
 
 		try {
 			debug("Validating authorization code");
-			let tokens = await this.client.validateAuthorizationCode<
-				TokenResponseBody & ExtraParams
-			>(code, {
-				codeVerifier,
-				authenticateWith: this.options.authenticateWith,
-				credentials: this.options.clientSecret,
-			});
+			let context = new AuthorizationCodeAccessTokenRequestContext(code);
+
+			context.setRedirectURI(this.options.redirectURI.toString());
+			context.setCodeVerifier(codeVerifier);
+
+			if (this.options.authenticateWith === "http_basic_auth") {
+				context.authenticateWithHTTPBasicAuth(
+					this.options.clientId,
+					this.options.clientSecret,
+				);
+			} else if (this.options.authenticateWith === "request_body") {
+				context.authenticateWithRequestBody(
+					this.options.clientId,
+					this.options.clientSecret,
+				);
+			}
+
+			let tokens = await sendTokenRequest<TokenResponseBody & ExtraParams>(
+				this.options.tokenEndpoint.toString(),
+				context,
+				{ signal: request.signal },
+			);
 
 			debug("Fetching the user profile");
 			let profile = await this.userProfile(tokens);
@@ -286,19 +312,87 @@ export class OAuth2Strategy<
 	 */
 	public refreshToken(
 		refreshToken: string,
-		options: Pick<
-			OAuth2StrategyOptions,
-			"authenticateWith" | "clientSecret" | "scopes"
-		>,
+		options: Partial<Pick<OAuth2StrategyOptions, "scopes">> & {
+			signal?: AbortSignal;
+		} = {},
 	) {
-		return this.client.refreshAccessToken(refreshToken, {
-			authenticateWith:
-				options.authenticateWith ?? this.options.authenticateWith,
-			credentials: options.clientSecret ?? this.options.clientSecret,
-			scopes: options.scopes ?? this.options.scopes,
-		});
+		let scopes = options.scopes ?? this.options.scopes ?? [];
+
+		let context = new RefreshRequestContext(refreshToken);
+
+		context.appendScopes(...scopes);
+
+		if (this.options.authenticateWith === "http_basic_auth") {
+			context.authenticateWithHTTPBasicAuth(
+				this.options.clientId,
+				this.options.clientSecret,
+			);
+		} else if (this.options.authenticateWith === "request_body") {
+			context.authenticateWithRequestBody(
+				this.options.clientId,
+				this.options.clientSecret,
+			);
+		}
+
+		return sendTokenRequest<TokenResponseBody & ExtraParams>(
+			this.options.tokenEndpoint.toString(),
+			context,
+			{ signal: options.signal },
+		);
+	}
+
+	public revokeToken(
+		accessToken: string,
+		options: { signal?: AbortSignal } = {},
+	) {
+		if (this.options.tokenRevocationEndpoint === undefined) {
+			throw new Error("Token revocation endpoint is not set");
+		}
+
+		let context = new TokenRevocationRequestContext(accessToken);
+
+		context.setTokenTypeHint("access_token");
+
+		if (this.options.authenticateWith === "http_basic_auth") {
+			context.authenticateWithHTTPBasicAuth(
+				this.options.clientId,
+				this.options.clientSecret,
+			);
+		} else if (this.options.authenticateWith === "request_body") {
+			context.authenticateWithRequestBody(
+				this.options.clientId,
+				this.options.clientSecret,
+			);
+		}
+
+		return sendTokenRevocationRequest(
+			this.options.tokenEndpoint.toString(),
+			context,
+			{ signal: options.signal },
+		);
+	}
+}
+
+export interface TokenErrorResponseBody {
+	error: string;
+	error_description?: string;
+	error_uri?: string;
+}
+
+export class OAuth2Error extends Error {
+	name = "OAuth2Error";
+
+	public request: Request;
+	public description: string | null;
+	public uri: string | null;
+
+	constructor(request: Request, body: Partial<TokenErrorResponseBody>) {
+		super(body.error ?? "");
+		this.request = request;
+		this.description = body.error_description ?? null;
+		this.uri = body.error_uri ?? null;
 	}
 }
 
 export { OAuth2RequestError };
-export type { TokenResponseBody } from "oslo/oauth2";
+export type { TokenResponseBody } from "@oslojs/oauth2";

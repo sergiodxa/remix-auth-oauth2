@@ -23,8 +23,8 @@
 	"license": "MIT",
 	"files": ["build", "package.json", "README.md"],
 	"dependencies": {
-		"debug": "^4.3.4",
-		"oslo": "^1.2.0"
+		"@oslojs/oauth2": "^0.1.0",
+		"debug": "^4.3.4"
 	},
 	"peerDependencies": {
 		"@remix-run/server-runtime": "^1.0.0 || ^2.0.0",
