@@ -10,8 +10,8 @@ import {
 import { createCookieSessionStorage, redirect } from "@remix-run/node";
 import { AuthenticateOptions, AuthorizationError } from "remix-auth";
 import {
+	OAuth2Error,
 	OAuth2Profile,
-	OAuth2RequestError,
 	OAuth2Strategy,
 	OAuth2StrategyOptions,
 	OAuth2StrategyVerifyParams,
@@ -140,7 +140,9 @@ describe(OAuth2Strategy.name, () => {
 
 		let data = await response.json();
 
-		expect(data).toEqual({ message: "State doesn't match." });
+		expect(data).toEqual({
+			message: "State in URL doesn't match state in session.",
+		});
 	});
 
 	test("calls verify with the tokens, user profile, context and request", async () => {
@@ -360,8 +362,8 @@ describe(OAuth2Strategy.name, () => {
 			}),
 		).toThrowError(
 			// @ts-expect-error - This is a test
-			new AuthorizationError("Error during authentication", {
-				cause: new OAuth2RequestError(request, {
+			new AuthorizationError("Error on authentication", {
+				cause: new OAuth2Error(request, {
 					error: "invalid_request",
 					error_description: undefined,
 				}),
