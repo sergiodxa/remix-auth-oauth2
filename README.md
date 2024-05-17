@@ -44,13 +44,18 @@ authenticator.use(
   >(
     {
       clientId: CLIENT_ID,
+      clientSecret: CLIENT_SECRET,
+
       authorizationEndpoint: "https://provider.com/oauth2/authorize",
       tokenEndpoint: "https://provider.com/oauth2/token",
       redirectURI: "https://example.app/auth/callback",
-      scopes: ["openid", "email", "profile"], // optional
+
+      tokenRevocationEndpoint: "https://provider.com/oauth2/revoke", // optional
+
       codeChallengeMethod: "S256", // optional
+      scopes: ["openid", "email", "profile"], // optional
+
       authenticateWith: "request_body", // optional
-      clientSecret: CLIENT_SECRET, // optional
     },
     async ({ tokens, profile, context, request }) => {
       // here you can use the params above to get the user and return it
@@ -73,7 +78,7 @@ let strategy = new OAuth2Strategy<User>(options, verify);
 let tokens = await strategy.refreshToken(refreshToken);
 ```
 
-The refresh token is part of the `tokens` object the varify callback receives. How you store it to call `strategy.refreshToken` and what you do with the `tokens` object after it is up to you.
+The refresh token is part of the `tokens` object the verify callback receives. How you store it to call `strategy.refreshToken` and what you do with the `tokens` object after it is up to you.
 
 The most common approach would be to store the refresh token in the user data and then update the session after refreshing the token.
 
@@ -93,6 +98,7 @@ authenticator.use(
 let user = await authenticator.isAuthenticated(request, {
   failureRedirect: "/login",
 });
+
 let session = await sessionStorage.getSession(request.headers.get("cookie"));
 
 let tokens = await strategy.refreshToken(user.refreshToken);
@@ -104,6 +110,18 @@ session.set(authenticator.sessionKey, {
 });
 
 // commit the session here
+```
+
+### Logging out the User
+
+If you want to logout the user, aside of clearing your application session, you can revoke the access token the user has with the provider.
+
+```ts
+let user = await authenticator.isAuthenticated(request, {
+  failureRedirect: "/login",
+});
+
+let tokens = await strategy.revokeToken(user.accessToken);
 ```
 
 ### Extending it
@@ -131,7 +149,7 @@ import { OAuth2Strategy } from "remix-auth-oauth2";
 export interface Auth0StrategyOptions
   extends Omit<
     OAuth2StrategyOptions,
-    "authorizationEndpoint" | "tokenEndpoint"
+    "authorizationEndpoint" | "tokenEndpoint" | "tokenRevocationEndpoint"
   > {
   domain: string;
   audience?: string;
@@ -210,6 +228,7 @@ export class Auth0Strategy<User> extends OAuth2Strategy<
       {
         authorizationEndpoint: `https://${domain}/authorize`,
         tokenEndpoint: `https://${domain}/oauth/token`,
+        tokenRevocationEndpoint: `https://${domain}/oauth/revoke`
         ...options,
       },
       verify,
