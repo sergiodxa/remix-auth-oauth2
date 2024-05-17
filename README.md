@@ -26,7 +26,7 @@ npm add remix-auth-oauth2
 > globalThis.crypto = webcrypto;
 > ```
 >
-> Or enable the experimaental flag `--experimental-global-webcrypto` when running your process.
+> Or enable the experimental flag `--experimental-global-webcrypto` when running your process.
 > For v20 or greater, this is not necessary.
 
 ### Directly
