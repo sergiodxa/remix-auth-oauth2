@@ -1,27 +1,40 @@
 {
 	"name": "remix-auth-oauth2",
 	"version": "1.11.2",
-	"type": "module",
-	"main": "./build/index.js",
-	"types": "./build/index.d.ts",
-	"homepage": "https://github.com/sergiodxa/remix-auth-oauth2#readme",
+	"description": "A strategy to use and implement OAuth2 framework for authentication with federated services like Google, Facebook, GitHub, etc.",
+	"license": "MIT",
+	"funding": ["https://github.com/sponsors/sergiodxa"],
+	"keywords": ["remix", "remix-auth", "auth", "authentication", "strategy"],
+	"author": {
+		"name": "Sergio Xalambrí",
+		"email": "hello+oss@sergiodxa.com",
+		"url": "https://sergiodxa.com"
+	},
 	"repository": {
 		"url": "https://github.com/sergiodxa/remix-auth-oauth2",
 		"type": "git"
 	},
-	"scripts": {
-		"prepare": "bun run build",
-		"build": "tsc --project tsconfig.json",
-		"typecheck": "tsc --project tsconfig.json --noEmit",
-		"quality": "biome check .",
-		"quality:fix": "biome check . --apply"
+	"homepage": "https://github.com/sergiodxa/remix-auth-oauth2#readme",
+	"bugs": {
+		"url": "https://github.com/sergiodxa/remix-auth-oauth2/issues"
 	},
+	"scripts": {
+		"build": "tsc",
+		"typecheck": "tsc --noEmit",
+		"quality": "biome check .",
+		"quality:fix": "biome check . --apply-unsafe",
+		"exports": "bun run ./scripts/exports.ts"
+	},
+	"sideEffects": false,
+	"type": "module",
 	"engines": {
 		"node": "^18.0.0 || ^20.0.0 || >=20.0.0"
 	},
-	"keywords": ["remix", "remix-auth", "auth", "authentication", "strategy"],
-	"license": "MIT",
 	"files": ["build", "package.json", "README.md"],
+	"exports": {
+		".": "./build/index.js",
+		"./package.json": "./package.json"
+	},
 	"dependencies": {
 		"@oslojs/oauth2": "^0.1.0",
 		"debug": "^4.3.4"
