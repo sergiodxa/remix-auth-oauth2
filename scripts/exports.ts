@@ -16,7 +16,7 @@ let text = await new Response(proc.stdout).text();
 let pkg = await file("package.json").json();
 
 let entrypointLines = text
-	.slice(text.indexOf(pkg.name))
+	.slice(text.indexOf(`"${pkg.name}/`))
 	.split("\n")
 	.filter(Boolean)
 	.filter((line) => !line.includes("─"))
