@@ -43,16 +43,57 @@ export interface OAuth2Profile {
 type URLConstructor = ConstructorParameters<typeof URL>[0];
 
 export interface OAuth2StrategyOptions {
+	/**
+	 * This is the Client ID of your application, provided to you by the Identity
+	 * Provider you're using to authenticate users.
+	 */
 	clientId: string;
+	/**
+	 * This is the Client Secret of your application, provided to you by the
+	 * Identity Provider you're using to authenticate users.
+	 */
 	clientSecret: string;
+
+	/**
+	 * The endpoint the Identity Provider asks you to send users to log in, or
+	 * authorize your application.
+	 */
 	authorizationEndpoint: URLConstructor;
+	/**
+	 * The endpoint the Identity Provider uses to let's you exchange an access
+	 * code for an access and refresh token.
+	 */
 	tokenEndpoint: URLConstructor;
+	/**
+	 * The URL of your application where the Identity Provider will redirect the
+	 * user after they've logged in or authorized your application.
+	 */
 	redirectURI: URLConstructor;
+
+	/**
+	 * The endpoint the Identity Provider uses to revoke an access or refresh
+	 * token, this can be useful to log out the user.
+	 */
 	tokenRevocationEndpoint?: URLConstructor;
 
-	codeChallengeMethod?: "S256" | "plain";
+	/**
+	 * The scopes you want to request from the Identity Provider, this is a list
+	 * of strings that represent the permissions you want to request from the
+	 * user.
+	 */
 	scopes?: string[];
 
+	/**
+	 * The code challenge method to use when sending the authorization request.
+	 * This is used when the Identity Provider requires a code challenge to be
+	 * sent with the authorization request.
+	 */
+	codeChallengeMethod?: "S256" | "plain";
+
+	/**
+	 * The method to use to authenticate with the Identity Provider, this can be
+	 * either `http_basic_auth` or `request_body`.
+	 */
 	authenticateWith?: "http_basic_auth" | "request_body";
 }
 
