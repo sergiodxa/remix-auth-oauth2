@@ -13,7 +13,7 @@ jobs:
       - uses: oven-sh/setup-bun@v1
       - run: bun install --frozen-lockfile
       - run: bun run build
-      - run: npx exports
+      - run: bun run exports
 
       - uses: actions/setup-node@v4
         with:
