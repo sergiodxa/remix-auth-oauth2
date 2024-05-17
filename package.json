@@ -40,19 +40,34 @@
 		"debug": "^4.3.4"
 	},
 	"peerDependencies": {
-		"@remix-run/server-runtime": "^1.0.0 || ^2.0.0",
+		"@remix-run/cloudflare": "^1.0.0 || ^2.0.0",
+		"@remix-run/node": "^1.0.0 || ^2.0.0",
+		"@remix-run/deno": "^1.0.0 || ^2.0.0",
 		"remix-auth": "^3.6.0"
 	},
+	"peerDependenciesMeta": {
+		"@remix-run/cloudflare": {
+			"optional": true
+		},
+		"@remix-run/node": {
+			"optional": true
+		},
+		"@remix-run/deno": {
+			"optional": true
+		}
+	},
 	"devDependencies": {
-		"@biomejs/biome": "^1.7.1",
+		"@arethetypeswrong/cli": "^0.15.3",
+		"@biomejs/biome": "^1.7.2",
 		"@remix-run/node": "^2.8.1",
 		"@remix-run/server-runtime": "^2.8.1",
 		"@types/bun": "^1.0.12",
 		"@types/debug": "^4.1.12",
+		"consola": "^3.2.3",
 		"msw": "^2.2.13",
-		"react": "^18.2.0",
-		"react-dom": "^18.2.0",
 		"remix-auth": "^3.6.0",
-		"typescript": "^5.4.3"
+		"typedoc": "^0.25.13",
+		"typedoc-plugin-mdn-links": "^3.1.25",
+		"typescript": "^5.4.5"
 	}
 }
