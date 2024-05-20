@@ -407,7 +407,7 @@ export class OAuth2Strategy<
 		}
 
 		return sendTokenRevocationRequest(
-			this.options.tokenEndpoint.toString(),
+			this.options.tokenRevocationEndpoint.toString(),
 			context,
 			{ signal: options.signal },
 		);
