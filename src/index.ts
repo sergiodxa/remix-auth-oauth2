@@ -383,16 +383,21 @@ export class OAuth2Strategy<
 	}
 
 	public revokeToken(
-		accessToken: string,
-		options: { signal?: AbortSignal } = {},
+		token: string,
+		options: {
+			signal?: AbortSignal;
+			tokenType?: "access_token" | "refresh_token";
+		} = {},
 	) {
 		if (this.options.tokenRevocationEndpoint === undefined) {
 			throw new Error("Token revocation endpoint is not set");
 		}
 
-		let context = new TokenRevocationRequestContext(accessToken);
+		let context = new TokenRevocationRequestContext(token);
 
-		context.setTokenTypeHint("access_token");
+		if (options.tokenType) {
+			context.setTokenTypeHint(options.tokenType);
+		}
 
 		if (this.options.authenticateWith === "http_basic_auth") {
 			context.authenticateWithHTTPBasicAuth(
