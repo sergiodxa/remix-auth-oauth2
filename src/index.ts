@@ -87,12 +87,14 @@ export interface OAuth2StrategyOptions {
 	 * The code challenge method to use when sending the authorization request.
 	 * This is used when the Identity Provider requires a code challenge to be
 	 * sent with the authorization request.
+	 * @default "S256"
 	 */
 	codeChallengeMethod?: "S256" | "plain";
 
 	/**
 	 * The method to use to authenticate with the Identity Provider, this can be
 	 * either `http_basic_auth` or `request_body`.
+	 * @default "request_body"
 	 */
 	authenticateWith?: "http_basic_auth" | "request_body";
 }
@@ -116,15 +118,21 @@ export class OAuth2Strategy<
 
 	protected sessionStateKey = "oauth2:state";
 	protected sessionCodeVerifierKey = "oauth2:codeVerifier";
+	protected options: OAuth2StrategyOptions;
 
 	constructor(
-		protected options: OAuth2StrategyOptions,
+		options: OAuth2StrategyOptions,
 		verify: StrategyVerifyCallback<
 			User,
 			OAuth2StrategyVerifyParams<Profile, ExtraParams>
 		>,
 	) {
 		super(verify);
+		this.options = {
+			codeChallengeMethod: "S256",
+			authenticateWith: "request_body",
+			...options,
+		};
 	}
 
 	async authenticate(
@@ -325,10 +333,7 @@ export class OAuth2Strategy<
 		}
 	}
 
-	protected async userProfile(
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		tokens: TokenResponseBody,
-	): Promise<Profile> {
+	protected async userProfile(tokens: TokenResponseBody): Promise<Profile> {
 		return { provider: "oauth2" } as Profile;
 	}
 
