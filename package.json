@@ -48,7 +48,7 @@
 		"./package.json": "./package.json"
 	},
 	"dependencies": {
-		"@oslojs/oauth2": "^0.1.0",
+		"@oslojs/oauth2": "^0.3.0",
 		"debug": "^4.3.4"
 	},
 	"peerDependencies": {
