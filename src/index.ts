@@ -198,7 +198,7 @@ export class OAuth2Strategy<
 			// Extend authorization URL with extra non-standard params
 			authorizationURL.search = this.authorizationParams(
 				authorizationURL.searchParams,
-				url.searchParams,
+				request,
 			).toString();
 
 			debug("Authorization URL", authorizationURL.toString());
@@ -349,7 +349,7 @@ export class OAuth2Strategy<
 	 */
 	protected authorizationParams(
 		params: URLSearchParams,
-		requestParams?: URLSearchParams,
+		request?: Request,
 	): URLSearchParams {
 		return new URLSearchParams(params);
 	}
