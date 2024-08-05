@@ -242,8 +242,17 @@ export class Auth0Strategy<User> extends OAuth2Strategy<
   // URLSearchParams with custom params we want to send to the authorizationURL.
   // Here we add the scope so Auth0 can use it, you can pass any extra param
   // you need to send to the authorizationURL here base on your provider.
-  protected authorizationParams(params: URLSearchParams): URLSearchParams {
+  // The `request` argument represents the entire Request object, allowing you
+  // to access various aspects of the incoming request, such as URL search parameters,
+  // headers, or other request-specific data. This flexibility enables you to
+  // dynamically set additional URL search parameters based on specific conditions
+  // or user input. For example, you might want to include a 'screen_hint' parameter.
+  protected authorizationParams(
+    params: URLSearchParams,
+    request?: Request,
+  ): URLSearchParams {
     if (this.audience) params.set("audience", this.audience);
+    if (new URL(request.url).searchParams.get('example')) params.set('example', 'example');
     return params;
   }
 
