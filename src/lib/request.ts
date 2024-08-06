@@ -4,7 +4,6 @@
  * direction of the library to focus on response parsing, I decided to copy the
  * old code and adapt it to the new structure of the library.
  */
-import { encodeBase64 } from "@oslojs/encoding";
 
 export namespace OAuth2Request {
 	export abstract class Context {
@@ -35,9 +34,9 @@ export namespace OAuth2Request {
 			clientId: string,
 			clientSecret: string,
 		): void {
-			const authorizationHeader = `Basic ${encodeBase64(
+			const authorizationHeader = `Basic ${Buffer.from(
 				new TextEncoder().encode(`${clientId}:${clientSecret}`),
-			)}`;
+			).toString("base64")}`;
 			this.headers.set("Authorization", authorizationHeader);
 		}
 

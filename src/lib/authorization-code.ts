@@ -5,7 +5,6 @@
  * old code and adapt it to the new structure of the library.
  */
 import { sha256 } from "@oslojs/crypto/sha2";
-import { encodeBase64urlNoPadding } from "@oslojs/encoding";
 
 export namespace AuthorizationCode {
 	export class AuthorizationURL extends URL {
@@ -35,7 +34,8 @@ export namespace AuthorizationCode {
 
 		public setS256CodeChallenge(codeVerifier: string): void {
 			const codeChallengeBytes = sha256(new TextEncoder().encode(codeVerifier));
-			const codeChallenge = encodeBase64urlNoPadding(codeChallengeBytes);
+			const codeChallenge =
+				Buffer.from(codeChallengeBytes).toString("base64url");
 			this.searchParams.set("code_challenge", codeChallenge);
 			this.searchParams.set("code_challenge_method", "S256");
 		}
