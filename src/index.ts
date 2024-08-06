@@ -1,13 +1,13 @@
 import {
-	AppLoadContext,
-	SessionStorage,
+	type AppLoadContext,
+	type SessionStorage,
 	redirect,
 } from "@remix-run/server-runtime";
 import createDebug from "debug";
 import {
-	AuthenticateOptions,
+	type AuthenticateOptions,
 	Strategy,
-	StrategyVerifyCallback,
+	type StrategyVerifyCallback,
 } from "remix-auth";
 import { AuthorizationCode } from "./lib/authorization-code.js";
 import { Generator } from "./lib/generator.js";
@@ -425,7 +425,7 @@ export interface TokenErrorResponseBody {
 }
 
 export class OAuth2Error extends Error {
-	name = "OAuth2Error";
+	override name = "OAuth2Error";
 
 	public request: Request;
 	public description: string | null;
