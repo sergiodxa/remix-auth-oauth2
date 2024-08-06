@@ -67,7 +67,6 @@
 		"@types/bun": "^1.0.12",
 		"@types/debug": "^4.1.12",
 		"consola": "^3.2.3",
-		"knip": "^5.27.0",
 		"msw": "^2.2.13",
 		"remix-auth": "^3.6.0",
 		"typedoc": "^0.26.2",
