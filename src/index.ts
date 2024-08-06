@@ -1,14 +1,7 @@
 import {
-	AuthorizationCodeAccessTokenRequestContext,
-	AuthorizationCodeAuthorizationURL,
-	OAuth2RequestError,
-	RefreshRequestContext,
-	TokenResponseBody,
-	TokenRevocationRequestContext,
-	generateCodeVerifier,
-	generateState,
-	sendTokenRequest,
-	sendTokenRevocationRequest,
+	DeviceAuthorizationRequestResult,
+	OAuth2RequestResult,
+	TokenRequestResult,
 } from "@oslojs/oauth2";
 import {
 	AppLoadContext,
@@ -21,6 +14,10 @@ import {
 	Strategy,
 	StrategyVerifyCallback,
 } from "remix-auth";
+import { AuthorizationCode } from "./lib/authorization-code.js";
+import * as generator from "./lib/generators.js";
+import { RefreshRequest } from "./lib/refresh-token.js";
+import { TokenRevocationRequest } from "./lib/token-revocation.js";
 
 let debug = createDebug("OAuth2Strategy");
 
@@ -103,7 +100,7 @@ export interface OAuth2StrategyVerifyParams<
 	Profile extends OAuth2Profile,
 	ExtraTokenParams extends Record<string, unknown> = Record<string, never>,
 > {
-	tokens: TokenResponseBody & ExtraTokenParams;
+	tokens: TokenRequestResult;
 	profile: Profile;
 	request: Request;
 	context?: AppLoadContext;
@@ -168,17 +165,17 @@ export class OAuth2Strategy<
 		if (!stateUrl) {
 			debug("No state found in the URL, redirecting to authorization endpoint");
 
-			let state = generateState();
+			let state = generator.state();
 			session.set(this.sessionStateKey, state);
 
 			debug("State", state);
 
-			let codeVerifier = generateCodeVerifier();
+			let codeVerifier = generator.codeVerifier();
 			session.set(this.sessionCodeVerifierKey, codeVerifier);
 
 			debug("Code verifier", codeVerifier);
 
-			let authorizationURL = new AuthorizationCodeAuthorizationURL(
+			let authorizationURL = new AuthorizationCode.AuthorizationURL(
 				this.options.authorizationEndpoint.toString(),
 				this.options.clientId,
 			);
@@ -187,7 +184,7 @@ export class OAuth2Strategy<
 			authorizationURL.setState(state);
 
 			if (this.options.scopes)
-				authorizationURL.appendScopes(...this.options.scopes);
+				authorizationURL.addScopes(...this.options.scopes);
 
 			if (this.options.codeChallengeMethod === "S256") {
 				authorizationURL.setS256CodeChallenge(codeVerifier);
@@ -349,7 +346,7 @@ export class OAuth2Strategy<
 	 */
 	protected authorizationParams(
 		params: URLSearchParams,
-		request?: Request,
+		request: Request,
 	): URLSearchParams {
 		return new URLSearchParams(params);
 	}
@@ -368,9 +365,9 @@ export class OAuth2Strategy<
 	) {
 		let scopes = options.scopes ?? this.options.scopes ?? [];
 
-		let context = new RefreshRequestContext(refreshToken);
+		let context = new RefreshRequest.Context(refreshToken);
 
-		context.appendScopes(...scopes);
+		context.addScopes(...scopes);
 
 		if (this.options.authenticateWith === "http_basic_auth") {
 			context.authenticateWithHTTPBasicAuth(
@@ -402,7 +399,7 @@ export class OAuth2Strategy<
 			throw new Error("Token revocation endpoint is not set");
 		}
 
-		let context = new TokenRevocationRequestContext(token);
+		let context = new TokenRevocationRequest.Context(token);
 
 		if (options.tokenType) {
 			context.setTokenTypeHint(options.tokenType);
@@ -420,11 +417,12 @@ export class OAuth2Strategy<
 			);
 		}
 
-		return sendTokenRevocationRequest(
-			this.options.tokenRevocationEndpoint.toString(),
-			context,
-			{ signal: options.signal },
-		);
+		return fetch(this.options.tokenRevocationEndpoint.toString(), {
+			body: JSON.stringify(Object.fromEntries(context.body)),
+			headers: new Headers(Object.fromEntries(context.headers)),
+			method: context.method,
+			signal: options.signal,
+		});
 	}
 }
 

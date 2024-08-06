@@ -12,5 +12,5 @@
 		"outDir": "./build"
 	},
 	"exclude": ["node_modules"],
-	"include": ["src/index.ts"]
+	"include": ["src/index.ts", "src/lib/**/*.ts"]
 }

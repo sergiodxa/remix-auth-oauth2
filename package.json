@@ -1,85 +1,87 @@
 {
-	"name": "remix-auth-oauth2",
-	"version": "2.1.0",
-	"description": "A strategy to use and implement OAuth2 framework for authentication with federated services like Google, Facebook, GitHub, etc.",
-	"license": "MIT",
-	"funding": [
-		"https://github.com/sponsors/sergiodxa"
-	],
-	"keywords": [
-		"remix",
-		"remix-auth",
-		"auth",
-		"authentication",
-		"strategy"
-	],
-	"author": {
-		"name": "Sergio Xalambrí",
-		"email": "hello+oss@sergiodxa.com",
-		"url": "https://sergiodxa.com"
-	},
-	"repository": {
-		"url": "https://github.com/sergiodxa/remix-auth-oauth2",
-		"type": "git"
-	},
-	"homepage": "https://github.com/sergiodxa/remix-auth-oauth2#readme",
-	"bugs": {
-		"url": "https://github.com/sergiodxa/remix-auth-oauth2/issues"
-	},
-	"scripts": {
-		"build": "tsc",
-		"typecheck": "tsc --noEmit",
-		"quality": "biome check .",
-		"quality:fix": "biome check . --apply-unsafe",
-		"exports": "bun run ./scripts/exports.ts"
-	},
-	"sideEffects": false,
-	"type": "module",
-	"engines": {
-		"node": "^18.0.0 || ^20.0.0 || >=20.0.0"
-	},
-	"files": [
-		"build",
-		"package.json",
-		"README.md"
-	],
-	"exports": {
-		".": "./build/index.js",
-		"./package.json": "./package.json"
-	},
-	"dependencies": {
-		"@oslojs/oauth2": "^0.5.0",
-		"debug": "^4.3.4"
-	},
-	"peerDependencies": {
-		"@remix-run/cloudflare": "^1.0.0 || ^2.0.0",
-		"@remix-run/node": "^1.0.0 || ^2.0.0",
-		"@remix-run/deno": "^1.0.0 || ^2.0.0",
-		"remix-auth": "^3.6.0"
-	},
-	"peerDependenciesMeta": {
-		"@remix-run/cloudflare": {
-			"optional": true
-		},
-		"@remix-run/node": {
-			"optional": true
-		},
-		"@remix-run/deno": {
-			"optional": true
-		}
-	},
-	"devDependencies": {
-		"@arethetypeswrong/cli": "^0.15.3",
-		"@biomejs/biome": "^1.7.2",
-		"@remix-run/node": "^2.8.1",
-		"@remix-run/server-runtime": "^2.8.1",
-		"@types/bun": "^1.0.12",
-		"@types/debug": "^4.1.12",
-		"consola": "^3.2.3",
-		"msw": "^2.2.13",
-		"remix-auth": "^3.6.0",
-		"typedoc": "^0.26.2",
-		"typedoc-plugin-mdn-links": "^3.1.25",
-		"typescript": "^5.4.5"
-	}
+  "name": "remix-auth-oauth2",
+  "version": "2.1.0",
+  "description": "A strategy to use and implement OAuth2 framework for authentication with federated services like Google, Facebook, GitHub, etc.",
+  "license": "MIT",
+  "funding": [
+    "https://github.com/sponsors/sergiodxa"
+  ],
+  "keywords": [
+    "remix",
+    "remix-auth",
+    "auth",
+    "authentication",
+    "strategy"
+  ],
+  "author": {
+    "name": "Sergio Xalambrí",
+    "email": "hello+oss@sergiodxa.com",
+    "url": "https://sergiodxa.com"
+  },
+  "repository": {
+    "url": "https://github.com/sergiodxa/remix-auth-oauth2",
+    "type": "git"
+  },
+  "homepage": "https://github.com/sergiodxa/remix-auth-oauth2#readme",
+  "bugs": {
+    "url": "https://github.com/sergiodxa/remix-auth-oauth2/issues"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "quality": "biome check .",
+    "quality:fix": "biome check . --apply-unsafe",
+    "exports": "bun run ./scripts/exports.ts"
+  },
+  "sideEffects": false,
+  "type": "module",
+  "engines": {
+    "node": "^18.0.0 || ^20.0.0 || >=20.0.0"
+  },
+  "files": [
+    "build",
+    "package.json",
+    "README.md"
+  ],
+  "exports": {
+    ".": "./build/index.js",
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@oslojs/crypto": "^0.6.2",
+    "@oslojs/encoding": "^0.4.1",
+    "@oslojs/oauth2": "^0.5.0",
+    "debug": "^4.3.4"
+  },
+  "peerDependencies": {
+    "@remix-run/cloudflare": "^1.0.0 || ^2.0.0",
+    "@remix-run/node": "^1.0.0 || ^2.0.0",
+    "@remix-run/deno": "^1.0.0 || ^2.0.0",
+    "remix-auth": "^3.6.0"
+  },
+  "peerDependenciesMeta": {
+    "@remix-run/cloudflare": {
+      "optional": true
+    },
+    "@remix-run/node": {
+      "optional": true
+    },
+    "@remix-run/deno": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.15.3",
+    "@biomejs/biome": "^1.7.2",
+    "@remix-run/node": "^2.8.1",
+    "@remix-run/server-runtime": "^2.8.1",
+    "@types/bun": "^1.0.12",
+    "@types/debug": "^4.1.12",
+    "consola": "^3.2.3",
+    "msw": "^2.2.13",
+    "remix-auth": "^3.6.0",
+    "typedoc": "^0.26.2",
+    "typedoc-plugin-mdn-links": "^3.1.25",
+    "typescript": "^5.4.5"
+  }
 }
