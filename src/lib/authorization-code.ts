@@ -4,7 +4,6 @@
  * direction of the library to focus on response parsing, I decided to copy the
  * old code and adapt it to the new structure of the library.
  */
-import { sha256 } from "@oslojs/crypto/sha2";
 import { encodeBase64urlNoPadding } from "@oslojs/encoding";
 
 export namespace AuthorizationCode {
@@ -33,8 +32,13 @@ export namespace AuthorizationCode {
 			this.searchParams.set("state", state);
 		}
 
-		public setS256CodeChallenge(codeVerifier: string): void {
-			const codeChallengeBytes = sha256(new TextEncoder().encode(codeVerifier));
+		public async setS256CodeChallenge(codeVerifier: string): Promise<void> {
+			const codeChallengeBytes = new Uint8Array(
+				await crypto.subtle.digest(
+					"SHA-256",
+					new TextEncoder().encode(codeVerifier),
+				),
+			);
 			const codeChallenge = encodeBase64urlNoPadding(codeChallengeBytes);
 			this.searchParams.set("code_challenge", codeChallenge);
 			this.searchParams.set("code_challenge_method", "S256");
