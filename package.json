@@ -3,16 +3,8 @@
 	"version": "2.2.0",
 	"description": "A strategy to use and implement OAuth2 framework for authentication with federated services like Google, Facebook, GitHub, etc.",
 	"license": "MIT",
-	"funding": [
-		"https://github.com/sponsors/sergiodxa"
-	],
-	"keywords": [
-		"remix",
-		"remix-auth",
-		"auth",
-		"authentication",
-		"strategy"
-	],
+	"funding": ["https://github.com/sponsors/sergiodxa"],
+	"keywords": ["remix", "remix-auth", "auth", "authentication", "strategy"],
 	"author": {
 		"name": "Sergio Xalambrí",
 		"email": "hello+oss@sergiodxa.com",
@@ -30,7 +22,7 @@
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",
 		"quality": "biome check .",
-		"quality:fix": "biome check . --apply-unsafe",
+		"quality:fix": "biome check . --write --unsafe",
 		"exports": "bun run ./scripts/exports.ts"
 	},
 	"sideEffects": false,
@@ -38,11 +30,7 @@
 	"engines": {
 		"node": "^18.0.0 || ^20.0.0 || >=20.0.0"
 	},
-	"files": [
-		"build",
-		"package.json",
-		"README.md"
-	],
+	"files": ["build", "package.json", "README.md"],
 	"exports": {
 		".": "./build/index.js",
 		"./package.json": "./package.json"
@@ -72,7 +60,7 @@
 	},
 	"devDependencies": {
 		"@arethetypeswrong/cli": "^0.15.3",
-		"@biomejs/biome": "^1.7.2",
+		"@biomejs/biome": "^1.8.3",
 		"@remix-run/node": "^2.8.1",
 		"@remix-run/server-runtime": "^2.8.1",
 		"@total-typescript/tsconfig": "^1.0.4",
