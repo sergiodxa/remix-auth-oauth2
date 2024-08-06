@@ -31,8 +31,7 @@
 		"typecheck": "tsc --noEmit",
 		"quality": "biome check .",
 		"quality:fix": "biome check . --apply-unsafe",
-		"exports": "bun run ./scripts/exports.ts",
-		"unused": "knip"
+		"exports": "bun run ./scripts/exports.ts"
 	},
 	"sideEffects": false,
 	"type": "module",
