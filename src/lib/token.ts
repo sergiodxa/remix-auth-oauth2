@@ -1,62 +1,144 @@
+import { OAuth2RequestResult, TokenRequestResult } from "@oslojs/oauth2";
 import { OAuth2Request } from "./request.js";
 
-export class TokenRequestResult extends OAuth2Request.Result {
-	public tokenType(): string {
-		if ("token_type" in this.body && typeof this.body.token_type === "string") {
-			return this.body.token_type;
+type URLConstructor = ConstructorParameters<typeof URL>[0];
+
+export namespace Token {
+	export namespace Response {
+		export interface Body {
+			access_token: string;
+			token_type: string;
+			expires_in?: number;
+			refresh_token?: string;
+			scope?: string;
 		}
-		throw new Error("Missing or invalid 'token_type' field");
+
+		export interface ErrorBody {
+			error: string;
+			error_description?: string;
+		}
 	}
 
-	public accessToken(): string {
-		if (
-			"access_token" in this.body &&
-			typeof this.body.access_token === "string"
+	export namespace Request {
+		export class Context extends OAuth2Request.Context {
+			constructor(authorizationCode: string) {
+				super("POST");
+				this.body.set("grant_type", "authorization_code");
+				this.body.set("code", authorizationCode);
+			}
+
+			public setCodeVerifier(codeVerifier: string): void {
+				this.body.set("code_verifier", codeVerifier);
+			}
+
+			public setRedirectURI(redirectURI: string): void {
+				this.body.set("redirect_uri", redirectURI);
+			}
+		}
+
+		export async function send<ExtraParams extends Record<string, unknown>>(
+			endpoint: URLConstructor,
+			context: OAuth2Request.Context,
+			options?: { signal?: AbortSignal },
+		): Promise<Response.Body & ExtraParams> {
+			let request = context.toRequest(endpoint);
+			let response = await fetch(request, { signal: options?.signal });
+			let body = await response.json();
+
+			let result = new Result<ExtraParams>(body);
+
+			if (result.hasErrorCode()) {
+				throw new OAuth2Request.Error(
+					result.errorCode(),
+					request,
+					context,
+					response.headers,
+					{
+						description: result.errorDescription(),
+						uri: result.errorURI(),
+					},
+				);
+			}
+
+			return result.toJSON();
+		}
+
+		export class Result<
+			ExtraParams extends Record<string, unknown>,
+		> extends TokenRequestResult {
+			toJSON(): Response.Body & ExtraParams {
+				return {
+					...this.body,
+					access_token: this.accessToken(),
+					token_type: this.tokenType(),
+					expires_in: this.accessTokenExpiresInSeconds(),
+					scope: this.scopes().join(" "),
+					refresh_token: this.refreshToken(),
+				} as Response.Body & ExtraParams;
+			}
+		}
+	}
+
+	export namespace RevocationRequest {
+		export class Context extends OAuth2Request.Context {
+			constructor(token: string) {
+				super("POST");
+				this.body.set("token", token);
+			}
+
+			public setTokenTypeHint(
+				tokenType: "access_token" | "refresh_token",
+			): void {
+				if (tokenType === "access_token") {
+					this.body.set("token_type_hint", "access_token");
+				} else if (tokenType === "refresh_token") {
+					this.body.set("token_type_hint", "refresh_token");
+				}
+			}
+		}
+
+		export async function send(
+			endpoint: URLConstructor,
+			context: OAuth2Request.Context,
+			options?: { signal?: AbortSignal },
 		) {
-			return this.body.access_token;
+			let request = context.toRequest(endpoint);
+			let response = await fetch(request, { signal: options?.signal });
+			let body = await response.json();
+
+			let result = new OAuth2RequestResult(body);
+
+			if (result.hasErrorCode()) {
+				throw new OAuth2Request.Error(
+					result.errorCode(),
+					request,
+					context,
+					response.headers,
+					{ description: result.errorDescription(), uri: result.errorURI() },
+				);
+			}
 		}
-		throw new Error("Missing or invalid 'access_token' field");
 	}
 
-	public accessTokenExpiresInSeconds(): number {
-		if ("expires_in" in this.body && typeof this.body.expires_in === "number") {
-			return this.body.expires_in;
+	export namespace RefreshRequest {
+		export class Context extends OAuth2Request.Context {
+			constructor(refreshToken: string) {
+				super("POST");
+				this.body.set("grant_type", "refresh_token");
+				this.body.set("refresh_token", refreshToken);
+			}
+
+			public addScopes(...scopes: string[]): void {
+				if (scopes.length < 1) {
+					return;
+				}
+				let scopeValue = scopes.join(" ");
+				const existingScopes = this.body.get("scope");
+				if (existingScopes !== null) {
+					scopeValue = `${scopeValue} ${existingScopes}`;
+				}
+				this.body.set("scope", scopeValue);
+			}
 		}
-		throw new Error("Missing or invalid 'expires_in' field");
-	}
-
-	public accessTokenExpiresAt(): Date {
-		return new Date(Date.now() + this.accessTokenExpiresInSeconds() * 1000);
-	}
-
-	public hasRefreshToken(): boolean {
-		return (
-			"refresh_token" in this.body &&
-			typeof this.body.refresh_token === "string"
-		);
-	}
-
-	public refreshToken(): string {
-		if (
-			"refresh_token" in this.body &&
-			typeof this.body.refresh_token === "string"
-		) {
-			return this.body.refresh_token;
-		}
-		throw new Error("Missing or invalid 'refresh_token' field");
-	}
-
-	public refreshTokenExpiresInSeconds(): number {
-		if (
-			"refresh_token_expires_in" in this.body &&
-			typeof this.body.refresh_token_expires_in === "number"
-		) {
-			return this.body.refresh_token_expires_in;
-		}
-		throw new Error("Missing or invalid 'refresh_token_expires_in' field");
-	}
-
-	public refreshTokenExpiresAt(): Date {
-		return new Date(Date.now() + this.refreshTokenExpiresInSeconds() * 1000);
 	}
 }

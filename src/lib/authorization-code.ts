@@ -1,6 +1,5 @@
 import { sha256 } from "@oslojs/crypto/sha2";
 import { encodeBase64urlNoPadding } from "@oslojs/encoding";
-import { OAuth2Request } from "./request.js";
 
 export namespace AuthorizationCode {
 	export class AuthorizationURL extends URL {
@@ -20,9 +19,7 @@ export namespace AuthorizationCode {
 			}
 			let scopeValue = scopes.join(" ");
 			const existingScopes = this.searchParams.get("scope");
-			if (existingScopes !== null) {
-				scopeValue = ` ${existingScopes}`;
-			}
+			if (existingScopes !== null) scopeValue = ` ${existingScopes}`;
 			this.searchParams.set("scope", scopeValue);
 		}
 
@@ -40,22 +37,6 @@ export namespace AuthorizationCode {
 		public setPlainCodeChallenge(codeVerifier: string): void {
 			this.searchParams.set("code_challenge", codeVerifier);
 			this.searchParams.set("code_challenge_method", "plain");
-		}
-	}
-
-	export class TokenRequestContext extends OAuth2Request.Context {
-		constructor(authorizationCode: string) {
-			super("POST");
-			this.body.set("grant_type", "authorization_code");
-			this.body.set("code", authorizationCode);
-		}
-
-		public setCodeVerifier(codeVerifier: string): void {
-			this.body.set("code_verifier", codeVerifier);
-		}
-
-		public setRedirectURI(redirectURI: string): void {
-			this.body.set("redirect_uri", redirectURI);
 		}
 	}
 }
