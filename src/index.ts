@@ -1,16 +1,4 @@
 import {
-	AuthorizationCodeAccessTokenRequestContext,
-	AuthorizationCodeAuthorizationURL,
-	OAuth2RequestError,
-	RefreshRequestContext,
-	TokenResponseBody,
-	TokenRevocationRequestContext,
-	generateCodeVerifier,
-	generateState,
-	sendTokenRequest,
-	sendTokenRevocationRequest,
-} from "@oslojs/oauth2";
-import {
 	AppLoadContext,
 	SessionStorage,
 	redirect,
@@ -21,6 +9,10 @@ import {
 	Strategy,
 	StrategyVerifyCallback,
 } from "remix-auth";
+import { AuthorizationCode } from "./lib/authorization-code.js";
+import { Generator } from "./lib/generator.js";
+import { OAuth2Request } from "./lib/request.js";
+import { Token } from "./lib/token.js";
 
 let debug = createDebug("OAuth2Strategy");
 
@@ -103,7 +95,7 @@ export interface OAuth2StrategyVerifyParams<
 	Profile extends OAuth2Profile,
 	ExtraTokenParams extends Record<string, unknown> = Record<string, never>,
 > {
-	tokens: TokenResponseBody & ExtraTokenParams;
+	tokens: Token.Response.Body & ExtraTokenParams;
 	profile: Profile;
 	request: Request;
 	context?: AppLoadContext;
@@ -168,17 +160,17 @@ export class OAuth2Strategy<
 		if (!stateUrl) {
 			debug("No state found in the URL, redirecting to authorization endpoint");
 
-			let state = generateState();
+			let state = Generator.state();
 			session.set(this.sessionStateKey, state);
 
 			debug("State", state);
 
-			let codeVerifier = generateCodeVerifier();
+			let codeVerifier = Generator.codeVerifier();
 			session.set(this.sessionCodeVerifierKey, codeVerifier);
 
 			debug("Code verifier", codeVerifier);
 
-			let authorizationURL = new AuthorizationCodeAuthorizationURL(
+			let authorizationURL = new AuthorizationCode.AuthorizationURL(
 				this.options.authorizationEndpoint.toString(),
 				this.options.clientId,
 			);
@@ -187,7 +179,7 @@ export class OAuth2Strategy<
 			authorizationURL.setState(state);
 
 			if (this.options.scopes)
-				authorizationURL.appendScopes(...this.options.scopes);
+				authorizationURL.addScopes(...this.options.scopes);
 
 			if (this.options.codeChallengeMethod === "S256") {
 				authorizationURL.setS256CodeChallenge(codeVerifier);
@@ -265,7 +257,7 @@ export class OAuth2Strategy<
 
 		try {
 			debug("Validating authorization code");
-			let context = new AuthorizationCodeAccessTokenRequestContext(code);
+			let context = new Token.Request.Context(code);
 
 			context.setRedirectURI(this.options.redirectURI.toString());
 			context.setCodeVerifier(codeVerifier);
@@ -282,7 +274,7 @@ export class OAuth2Strategy<
 				);
 			}
 
-			let tokens = await sendTokenRequest<TokenResponseBody & ExtraParams>(
+			let tokens = await Token.Request.send<ExtraParams>(
 				this.options.tokenEndpoint.toString(),
 				context,
 				{ signal: request.signal },
@@ -334,7 +326,7 @@ export class OAuth2Strategy<
 		}
 	}
 
-	protected async userProfile(tokens: TokenResponseBody): Promise<Profile> {
+	protected async userProfile(tokens: Token.Response.Body): Promise<Profile> {
 		return { provider: "oauth2" } as Profile;
 	}
 
@@ -349,7 +341,7 @@ export class OAuth2Strategy<
 	 */
 	protected authorizationParams(
 		params: URLSearchParams,
-		request?: Request,
+		request: Request,
 	): URLSearchParams {
 		return new URLSearchParams(params);
 	}
@@ -368,9 +360,9 @@ export class OAuth2Strategy<
 	) {
 		let scopes = options.scopes ?? this.options.scopes ?? [];
 
-		let context = new RefreshRequestContext(refreshToken);
+		let context = new Token.RefreshRequest.Context(refreshToken);
 
-		context.appendScopes(...scopes);
+		context.addScopes(...scopes);
 
 		if (this.options.authenticateWith === "http_basic_auth") {
 			context.authenticateWithHTTPBasicAuth(
@@ -384,14 +376,14 @@ export class OAuth2Strategy<
 			);
 		}
 
-		return sendTokenRequest<TokenResponseBody & ExtraParams>(
+		return Token.Request.send<ExtraParams>(
 			this.options.tokenEndpoint.toString(),
 			context,
 			{ signal: options.signal },
 		);
 	}
 
-	public revokeToken(
+	public async revokeToken(
 		token: string,
 		options: {
 			signal?: AbortSignal;
@@ -402,11 +394,9 @@ export class OAuth2Strategy<
 			throw new Error("Token revocation endpoint is not set");
 		}
 
-		let context = new TokenRevocationRequestContext(token);
+		let context = new Token.RevocationRequest.Context(token);
 
-		if (options.tokenType) {
-			context.setTokenTypeHint(options.tokenType);
-		}
+		if (options.tokenType) context.setTokenTypeHint(options.tokenType);
 
 		if (this.options.authenticateWith === "http_basic_auth") {
 			context.authenticateWithHTTPBasicAuth(
@@ -420,8 +410,8 @@ export class OAuth2Strategy<
 			);
 		}
 
-		return sendTokenRevocationRequest(
-			this.options.tokenRevocationEndpoint.toString(),
+		await Token.RevocationRequest.send(
+			this.options.tokenRevocationEndpoint,
 			context,
 			{ signal: options.signal },
 		);
@@ -449,5 +439,5 @@ export class OAuth2Error extends Error {
 	}
 }
 
-export { OAuth2RequestError };
-export type { TokenResponseBody } from "@oslojs/oauth2";
+export const OAuth2RequestError = OAuth2Request.Error;
+export type TokenResponseBody = Token.Response.Body;

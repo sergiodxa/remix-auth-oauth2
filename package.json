@@ -3,16 +3,8 @@
 	"version": "2.1.0",
 	"description": "A strategy to use and implement OAuth2 framework for authentication with federated services like Google, Facebook, GitHub, etc.",
 	"license": "MIT",
-	"funding": [
-		"https://github.com/sponsors/sergiodxa"
-	],
-	"keywords": [
-		"remix",
-		"remix-auth",
-		"auth",
-		"authentication",
-		"strategy"
-	],
+	"funding": ["https://github.com/sponsors/sergiodxa"],
+	"keywords": ["remix", "remix-auth", "auth", "authentication", "strategy"],
 	"author": {
 		"name": "Sergio Xalambrí",
 		"email": "hello+oss@sergiodxa.com",
@@ -31,23 +23,22 @@
 		"typecheck": "tsc --noEmit",
 		"quality": "biome check .",
 		"quality:fix": "biome check . --apply-unsafe",
-		"exports": "bun run ./scripts/exports.ts"
+		"exports": "bun run ./scripts/exports.ts",
+		"unused": "knip"
 	},
 	"sideEffects": false,
 	"type": "module",
 	"engines": {
 		"node": "^18.0.0 || ^20.0.0 || >=20.0.0"
 	},
-	"files": [
-		"build",
-		"package.json",
-		"README.md"
-	],
+	"files": ["build", "package.json", "README.md"],
 	"exports": {
 		".": "./build/index.js",
 		"./package.json": "./package.json"
 	},
 	"dependencies": {
+		"@oslojs/crypto": "^0.6.2",
+		"@oslojs/encoding": "^0.4.1",
 		"@oslojs/oauth2": "^0.5.0",
 		"debug": "^4.3.4"
 	},
