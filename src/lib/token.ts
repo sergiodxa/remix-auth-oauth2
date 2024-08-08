@@ -78,8 +78,8 @@ export namespace Token {
 					access_token: this.accessToken(),
 					token_type: this.tokenType(),
 					expires_in: this.accessTokenExpiresInSeconds(),
-					scope: this.scopes().join(" "),
-					refresh_token: this.refreshToken(),
+					...(this.hasScopes() && { scope: this.scopes().join(" ") }),
+					...(this.hasRefreshToken() && { refresh_token: this.refreshToken() }),
 				} as Response.Body & ExtraParams;
 			}
 		}
