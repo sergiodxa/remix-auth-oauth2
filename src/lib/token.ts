@@ -60,8 +60,10 @@ export namespace Token {
 					context,
 					response.headers,
 					{
-						description: result.errorDescription(),
-						uri: result.errorURI(),
+						description: result.hasErrorDescription()
+							? result.errorDescription()
+							: undefined,
+						uri: result.hasErrorURI() ? result.errorURI() : undefined,
 					},
 				);
 			}
@@ -120,7 +122,12 @@ export namespace Token {
 					request,
 					context,
 					response.headers,
-					{ description: result.errorDescription(), uri: result.errorURI() },
+					{
+						description: result.hasErrorDescription()
+							? result.errorDescription()
+							: undefined,
+						uri: result.hasErrorURI() ? result.errorURI() : undefined,
+					},
 				);
 			}
 		}
