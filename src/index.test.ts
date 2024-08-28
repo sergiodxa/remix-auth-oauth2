@@ -104,6 +104,36 @@ describe(OAuth2Strategy.name, () => {
 		expect(redirect.searchParams.get("code_challenge_method")).toBe("plain");
 	});
 
+	test("supports relative redirect uri", async () => {
+		let strategy = new OAuth2Strategy<User, TestProfile>(
+			{ ...options, redirectURI: "/callback" },
+			verify,
+		);
+
+		let request = new Request("https://remix.auth/login", {
+			headers: {
+				host: "remix.auth",
+			},
+		});
+
+		let response = await catchResponse(
+			strategy.authenticate(request, sessionStorage, BASE_OPTIONS),
+		);
+
+		// biome-ignore lint/style/noNonNullAssertion: This is a test
+		let redirect = new URL(response.headers.get("location")!);
+
+		let session = await sessionStorage.getSession(
+			response.headers.get("set-cookie"),
+		);
+
+		expect(response.status).toBe(302);
+
+		expect(redirect.searchParams.get("redirect_uri")).toBe(
+			"https://remix.auth/callback",
+		);
+	});
+
 	test("throws if there's no state in the session", async () => {
 		let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
 
