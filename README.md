@@ -139,6 +139,7 @@ import type { StrategyVerifyCallback } from "remix-auth";
 // We need to import the OAuth2Strategy, the verify params and the profile interfaces
 import type {
   OAuth2Profile,
+  OAuth2StrategyOptions,
   OAuth2StrategyVerifyParams,
   TokenResponseBody,
 } from "remix-auth-oauth2";
