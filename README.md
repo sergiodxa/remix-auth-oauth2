@@ -39,7 +39,7 @@ export let authenticator = new Authenticator<User>(sessionStorage);
 authenticator.use(
   new OAuth2Strategy<
     User,
-    { providers: "provider-name" },
+    { provider: "provider-name" },
     { id_token: string }
   >(
     {
