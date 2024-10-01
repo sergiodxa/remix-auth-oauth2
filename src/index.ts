@@ -274,6 +274,8 @@ export class OAuth2Strategy<
 				);
 			}
 
+			context.body = this.tokenRequestParams(context.body, request);
+
 			let tokens = await Token.Request.send<ExtraParams>(
 				this.options.tokenEndpoint.toString(),
 				context,
@@ -340,6 +342,21 @@ export class OAuth2Strategy<
 	 * parameters as required by the provider.
 	 */
 	protected authorizationParams(
+		params: URLSearchParams,
+		request: Request,
+	): URLSearchParams {
+		return new URLSearchParams(params);
+	}
+
+	/**
+	 * Return extra parameters to be included in the token request.
+	 *
+	 * Some OAuth 2.0 providers allow additional, non-standard parameters to be
+	 * included when exchanging an authorization code for an access token.
+	 * OAuth 2.0-based authentication strategies can override this function
+	 * in order to populate these parameters as required by the provider.
+	 */
+	protected tokenRequestParams(
 		params: URLSearchParams,
 		request: Request,
 	): URLSearchParams {
