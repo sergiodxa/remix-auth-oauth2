@@ -79,7 +79,9 @@ export namespace Token {
 					...this.body,
 					access_token: this.accessToken(),
 					token_type: this.tokenType(),
-					...("expires_in" in this.body && { expires_in: this.accessTokenExpiresInSeconds() }),
+					...("expires_in" in this.body && {
+						expires_in: this.accessTokenExpiresInSeconds(),
+					}),
 					...(this.hasScopes() && { scope: this.scopes().join(" ") }),
 					...(this.hasRefreshToken() && { refresh_token: this.refreshToken() }),
 				} as Response.Body & ExtraParams;
