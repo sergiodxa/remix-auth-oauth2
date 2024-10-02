@@ -75,12 +75,15 @@ export namespace Token {
 			ExtraParams extends Record<string, unknown>,
 		> extends TokenRequestResult {
 			// Make token type optional
-		    	tokenType() {
-				if ("token_type" in this.body && typeof this.body.token_type === "string") {
-			    		return this.body.token_type;
+			override tokenType() {
+				if (
+					"token_type" in this.body &&
+					typeof this.body.token_type === "string"
+				) {
+					return this.body.token_type;
 				}
-				return "unknown"
-		    	}
+				return "unknown";
+			}
 			toJSON(): Response.Body & ExtraParams {
 				return {
 					...this.body,
