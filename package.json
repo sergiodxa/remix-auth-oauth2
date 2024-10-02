@@ -1,7 +1,7 @@
 {
 	"name": "remix-auth-oauth2",
 	"version": "2.4.0",
-	"description": "A strategy to use and implement OAuth2 framework for authentication with federated services like Google, Facebook, GitHub, etc.",
+	"description": "Fork of remix-auth-oauth2 => A strategy to use and implement OAuth2 framework for authentication with federated services like Google, Facebook, GitHub, etc.",
 	"license": "MIT",
 	"funding": [
 		"https://github.com/sponsors/sergiodxa"
@@ -19,7 +19,7 @@
 		"url": "https://sergiodxa.com"
 	},
 	"repository": {
-		"url": "https://github.com/sergiodxa/remix-auth-oauth2",
+		"url": "https://github.com/rustyb/remix-auth-oauth2",
 		"type": "git"
 	},
 	"homepage": "https://github.com/sergiodxa/remix-auth-oauth2#readme",

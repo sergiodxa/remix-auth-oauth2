@@ -1,37 +1,37 @@
-name: Bump version
+# name: Bump version
 
-on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: "Type of version to bump"
-        required: true
-        type: choice
-        options:
-          - major
-          - minor
-          - patch
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       version:
+#         description: "Type of version to bump"
+#         required: true
+#         type: choice
+#         options:
+#           - major
+#           - minor
+#           - patch
 
-jobs:
-  bump-version:
-    name: Bump version
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ssh-key: ${{ secrets.DEPLOY_KEY }}
+# jobs:
+#   bump-version:
+#     name: Bump version
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#         with:
+#           ssh-key: ${{ secrets.DEPLOY_KEY }}
 
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile
+#       - uses: oven-sh/setup-bun@v2
+#       - run: bun install --frozen-lockfile
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "lts/*"
+#       - uses: actions/setup-node@v4
+#         with:
+#           node-version: "lts/*"
 
-      - run: |
-          git config user.name 'Sergio Xalambrí'
-          git config user.email 'hello@sergiodxa.com'
+#       - run: |
+#           git config user.name 'Sergio Xalambrí'
+#           git config user.email 'hello@sergiodxa.com'
 
-      - run: npm version ${{ github.event.inputs.version }}
-      - run: bun run quality:fix
-      - run: git push origin main --follow-tags
+#       - run: npm version ${{ github.event.inputs.version }}
+#       - run: bun run quality:fix
+#       - run: git push origin main --follow-tags
