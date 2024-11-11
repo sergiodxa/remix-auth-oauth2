@@ -71,7 +71,7 @@
 		}
 	},
 	"devDependencies": {
-		"@arethetypeswrong/cli": "^0.16.1",
+		"@arethetypeswrong/cli": "^0.17.0",
 		"@biomejs/biome": "^1.8.3",
 		"@remix-run/node": "^2.8.1",
 		"@remix-run/server-runtime": "^2.8.1",
