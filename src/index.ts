@@ -69,6 +69,11 @@ export interface OAuth2StrategyOptions {
 	tokenRevocationEndpoint?: URLConstructor;
 
 	/**
+	 * Indicates whether the token revocation response is expected to be empty.
+	 */
+	expectEmptyTokenRevocationResponse?: boolean;
+
+	/**
 	 * The scopes you want to request from the Identity Provider, this is a list
 	 * of strings that represent the permissions you want to request from the
 	 * user.
@@ -413,7 +418,10 @@ export class OAuth2Strategy<
 		await Token.RevocationRequest.send(
 			this.options.tokenRevocationEndpoint,
 			context,
-			{ signal: options.signal },
+			{
+				signal: options.signal,
+				expectEmptyResponse: this.options.expectEmptyTokenRevocationResponse,
+			},
 		);
 	}
 }

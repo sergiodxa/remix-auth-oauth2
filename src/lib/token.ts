@@ -110,10 +110,14 @@ export namespace Token {
 		export async function send(
 			endpoint: URLConstructor,
 			context: OAuth2Request.Context,
-			options?: { signal?: AbortSignal },
+			options?: { signal?: AbortSignal; expectEmptyResponse?: boolean },
 		) {
 			let request = context.toRequest(endpoint);
 			let response = await fetch(request, { signal: options?.signal });
+			if (options?.expectEmptyResponse) {
+				return;
+			}
+
 			let body = await response.json();
 
 			let result = new OAuth2RequestResult(body);
