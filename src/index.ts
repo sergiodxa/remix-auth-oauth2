@@ -175,7 +175,7 @@ export class OAuth2Strategy<
 				this.options.clientId,
 			);
 
-			authorizationURL.setRedirectURI(this.options.redirectURI.toString());
+			authorizationURL.setRedirectURI(this.getRedirectURI(request));
 			authorizationURL.setState(state);
 
 			if (this.options.scopes)
@@ -259,7 +259,7 @@ export class OAuth2Strategy<
 			debug("Validating authorization code");
 			let context = new Token.Request.Context(code);
 
-			context.setRedirectURI(this.options.redirectURI.toString());
+			context.setRedirectURI(this.getRedirectURI(request));
 			context.setCodeVerifier(codeVerifier);
 
 			if (this.options.authenticateWith === "http_basic_auth") {
@@ -328,6 +328,23 @@ export class OAuth2Strategy<
 
 	protected async userProfile(tokens: Token.Response.Body): Promise<Profile> {
 		return { provider: "oauth2" } as Profile;
+	}
+
+	private getRedirectURI(request: Request) {
+		const redirectURI = this.options.redirectURI.toString();
+		if (redirectURI.startsWith("http:") || redirectURI.startsWith("https:")) {
+			return redirectURI;
+		}
+
+		const host =
+			request.headers.get("X-Forwarded-Host") ??
+			request.headers.get("host") ??
+			new URL(request.url).host;
+		const protocol = host.includes("localhost") ? "http" : "https";
+		if (redirectURI.startsWith("/")) {
+			return new URL(redirectURI, `${protocol}://${host}`).toString();
+		}
+		return new URL(`${protocol}://${redirectURI}`).toString();
 	}
 
 	/**
