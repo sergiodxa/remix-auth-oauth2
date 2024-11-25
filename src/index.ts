@@ -1,4 +1,9 @@
-import { Cookie, SetCookie } from "@mjackson/headers";
+import {
+	Cookie,
+	type CookieInit,
+	SetCookie,
+	type SetCookieInit,
+} from "@mjackson/headers";
 import {
 	CodeChallengeMethod,
 	OAuth2Client,
@@ -36,6 +41,18 @@ export class OAuth2Strategy<User> extends Strategy<
 		);
 	}
 
+	private get cookieName() {
+		if (typeof this.options.cookie === "string") {
+			return this.options.cookie || "oauth2";
+		}
+		return this.options.cookie?.name ?? "oauth2";
+	}
+
+	private get cookieOptions() {
+		if (typeof this.options.cookie !== "object") return {};
+		return this.options.cookie ?? {};
+	}
+
 	override async authenticate(request: Request): Promise<User> {
 		debug("Request URL", request.url);
 
@@ -66,8 +83,9 @@ export class OAuth2Strategy<User> extends Strategy<
 			debug("Authorization URL", url.toString());
 
 			let header = new SetCookie({
-				name: this.options.cookieName ?? "oauth2",
+				name: this.cookieName,
 				value: new URLSearchParams({ state, codeVerifier }).toString(),
+				...this.cookieOptions,
 			});
 
 			throw redirect(url.toString(), {
@@ -80,9 +98,8 @@ export class OAuth2Strategy<User> extends Strategy<
 		if (!code) throw new ReferenceError("Missing code in the URL");
 
 		let cookie = new Cookie(request.headers.get("cookie") ?? "");
-		let params = new URLSearchParams(
-			cookie.get(this.options.cookieName ?? "oauth2"),
-		);
+		let params = new URLSearchParams(cookie.get(this.cookieName));
+
 		if (!params.has("state")) {
 			throw new ReferenceError("Missing state on cookie.");
 		}
@@ -182,7 +199,7 @@ export namespace OAuth2Strategy {
 		 * allows you to customize the name of that cookie if needed.
 		 * @default "oauth2"
 		 */
-		cookieName?: string;
+		cookie?: string | (Omit<SetCookieInit, "value"> & { name: string });
 
 		/**
 		 * This is the Client ID of your application, provided to you by the Identity
