@@ -1,7 +1,29 @@
-import { describe, expect, mock, test } from "bun:test";
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	describe,
+	expect,
+	mock,
+	test,
+} from "bun:test";
 import { Cookie, SetCookie } from "@mjackson/headers";
+import { http, HttpResponse } from "msw";
+import { setupServer } from "msw/native";
 import { OAuth2Strategy } from ".";
 import { catchResponse } from "./test/helpers";
+
+const server = setupServer(
+	http.post("https://example.app/token", async () => {
+		return HttpResponse.json({
+			access_token: "mocked",
+			expires_in: 3600,
+			refresh_token: "mocked",
+			scope: ["user:email", "user:profile"].join(" "),
+			token_type: "Bearer",
+		});
+	}),
+);
 
 describe(OAuth2Strategy.name, () => {
 	let verify = mock();
@@ -18,6 +40,18 @@ describe(OAuth2Strategy.name, () => {
 	interface User {
 		id: string;
 	}
+
+	beforeAll(() => {
+		server.listen();
+	});
+
+	afterEach(() => {
+		server.resetHandlers();
+	});
+
+	afterAll(() => {
+		server.close();
+	});
 
 	test("should have the name `oauth2`", () => {
 		let strategy = new OAuth2Strategy<User>(options, verify);
@@ -101,7 +135,7 @@ describe(OAuth2Strategy.name, () => {
 			{ headers: { cookie: cookie.toString() } },
 		);
 
-		await strategy.authenticate(request).catch((error) => error);
+		await strategy.authenticate(request);
 
 		expect(verify).toHaveBeenCalled();
 	});
