@@ -3,16 +3,8 @@
 	"version": "2.4.0",
 	"description": "A strategy to use and implement OAuth2 framework for authentication with federated services like Google, Facebook, GitHub, etc.",
 	"license": "MIT",
-	"funding": [
-		"https://github.com/sponsors/sergiodxa"
-	],
-	"keywords": [
-		"remix",
-		"remix-auth",
-		"auth",
-		"authentication",
-		"strategy"
-	],
+	"funding": ["https://github.com/sponsors/sergiodxa"],
+	"keywords": ["remix", "remix-auth", "auth", "authentication", "strategy"],
 	"author": {
 		"name": "Sergio Xalambrí",
 		"email": "hello+oss@sergiodxa.com",
@@ -36,53 +28,34 @@
 	"sideEffects": false,
 	"type": "module",
 	"engines": {
-		"node": "^18.0.0 || ^20.0.0 || >=20.0.0"
+		"node": "^20.0.0 || >=20.0.0"
 	},
-	"files": [
-		"build",
-		"package.json",
-		"README.md"
-	],
+	"files": ["build", "package.json", "README.md"],
 	"exports": {
 		".": "./build/index.js",
 		"./package.json": "./package.json"
 	},
 	"dependencies": {
-		"@oslojs/crypto": "^0.6.2",
+		"@mjackson/headers": "^0.8.0",
+		"@oslojs/crypto": "^1.0.1",
 		"@oslojs/encoding": "^1.0.0",
 		"@oslojs/oauth2": "^0.5.0",
-		"debug": "^4.3.4"
+		"arctic": "^2.3.0",
+		"debug": "^4.3.7"
 	},
 	"peerDependencies": {
-		"@remix-run/cloudflare": "^1.0.0 || ^2.0.0",
-		"@remix-run/node": "^1.0.0 || ^2.0.0",
-		"@remix-run/deno": "^1.0.0 || ^2.0.0",
-		"remix-auth": "^3.6.0"
-	},
-	"peerDependenciesMeta": {
-		"@remix-run/cloudflare": {
-			"optional": true
-		},
-		"@remix-run/node": {
-			"optional": true
-		},
-		"@remix-run/deno": {
-			"optional": true
-		}
+		"remix-auth": "^4.0.0"
 	},
 	"devDependencies": {
 		"@arethetypeswrong/cli": "^0.17.0",
-		"@biomejs/biome": "^1.8.3",
-		"@remix-run/node": "^2.8.1",
-		"@remix-run/server-runtime": "^2.8.1",
+		"@biomejs/biome": "^1.9.4",
 		"@total-typescript/tsconfig": "^1.0.4",
-		"@types/bun": "^1.0.12",
+		"@types/bun": "^1.1.13",
 		"@types/debug": "^4.1.12",
-		"consola": "^3.2.3",
-		"msw": "^2.2.13",
-		"remix-auth": "^3.6.0",
-		"typedoc": "^0.26.2",
-		"typedoc-plugin-mdn-links": "^3.1.25",
-		"typescript": "^5.4.5"
+		"msw": "^2.6.6",
+		"remix-auth": "^4.0.0",
+		"typedoc": "^0.26.11",
+		"typedoc-plugin-mdn-links": "^4.0.1",
+		"typescript": "^5.7.2"
 	}
 }
