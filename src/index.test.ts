@@ -1,31 +1,7 @@
-import {
-	afterAll,
-	afterEach,
-	beforeAll,
-	describe,
-	expect,
-	mock,
-	test,
-} from "bun:test";
+import { describe, expect, mock, test } from "bun:test";
+import { Cookie, SetCookie } from "@mjackson/headers";
 import { OAuth2Strategy } from ".";
 import { catchResponse } from "./test/helpers";
-
-import { Cookie, SetCookie } from "@mjackson/headers";
-import { OAuth2Tokens } from "arctic";
-import { redirect } from "./lib/redirect";
-import { server } from "./test/mock";
-
-beforeAll(() => {
-	server.listen();
-});
-
-afterEach(() => {
-	server.resetHandlers();
-});
-
-afterAll(() => {
-	server.close();
-});
 
 describe(OAuth2Strategy.name, () => {
 	let verify = mock();

@@ -52,7 +52,6 @@
 		"@total-typescript/tsconfig": "^1.0.4",
 		"@types/bun": "^1.1.13",
 		"@types/debug": "^4.1.12",
-		"msw": "^2.6.6",
 		"remix-auth": "^4.0.0",
 		"typedoc": "^0.26.11",
 		"typedoc-plugin-mdn-links": "^4.0.1",
