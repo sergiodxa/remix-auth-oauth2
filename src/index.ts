@@ -85,6 +85,10 @@ export class OAuth2Strategy<User> extends Strategy<
 			let header = new SetCookie({
 				name: this.cookieName,
 				value: new URLSearchParams({ state, codeVerifier }).toString(),
+				httpOnly: true, // Prevents JavaScript from accessing the cookie
+				maxAge: 60 * 5, // 5 minutes
+				path: "/", // Allow the cookie to be sent to any path
+				sameSite: "Lax", // Prevents it from being sent in cross-site requests
 				...this.cookieOptions,
 			});
 
