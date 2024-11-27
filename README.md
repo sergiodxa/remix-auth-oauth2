@@ -57,6 +57,35 @@ authenticator.use(
 );
 ```
 
+Then you will need to setup your routes, for the OAuth2 flows you will need to call the `authenticate` method twice.
+
+First, you will call the `authenticate` method with the provider name you set in the authenticator.
+
+```ts
+export async function action({ request }: Route.ActionArgs) {
+  await authenticator.authenticate("provider-name", { request });
+}
+```
+
+> [!NOTE]
+> This route can be an `action` or a `loader`, it depends if you trigger the flow doing a POST or GET request.
+
+This will start the OAuth2 flow and redirect the user to the provider's login page. Once the user logs in and authorizes your application, the provider will redirect the user back to your application redirect URI.
+
+You will now need a route on that URI to handle the callback from the provider.
+
+```ts
+export async function loader({ request }: Route.LoaderArgs) {
+  let user = await authenticator.authenticate("provider-name", { request });
+  // now you have the user object with the data you returned in the verify function
+}
+```
+
+> [!NOTE]
+> This route must be a `loader` as the redirect will trigger a `GET` request.
+
+Once you have the `user` object returned by your strategy verify function, you can do whatever you want with that information. This can be storing the user in a session, creating a new user in your database, link the account to an existing user in your database, etc.
+
 ### Using the Refresh Token
 
 The strategy exposes a public `refreshToken` method that you can use to refresh the access token.
