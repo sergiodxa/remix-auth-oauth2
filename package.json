@@ -1,10 +1,18 @@
 {
 	"name": "remix-auth-oauth2",
-	"version": "3.0.0",
+	"version": "3.1.0",
 	"description": "A strategy to use and implement OAuth2 framework for authentication with federated services like Google, Facebook, GitHub, etc.",
 	"license": "MIT",
-	"funding": ["https://github.com/sponsors/sergiodxa"],
-	"keywords": ["remix", "remix-auth", "auth", "authentication", "strategy"],
+	"funding": [
+		"https://github.com/sponsors/sergiodxa"
+	],
+	"keywords": [
+		"remix",
+		"remix-auth",
+		"auth",
+		"authentication",
+		"strategy"
+	],
 	"author": {
 		"name": "Sergio Xalambrí",
 		"email": "hello+oss@sergiodxa.com",
@@ -30,7 +38,11 @@
 	"engines": {
 		"node": "^20.0.0 || >=20.0.0"
 	},
-	"files": ["build", "package.json", "README.md"],
+	"files": [
+		"build",
+		"package.json",
+		"README.md"
+	],
 	"exports": {
 		".": "./build/index.js",
 		"./package.json": "./package.json"
