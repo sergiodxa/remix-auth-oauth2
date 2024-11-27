@@ -1,9 +1,5 @@
-import {
-	Cookie,
-	type CookieInit,
-	SetCookie,
-	type SetCookieInit,
-} from "@mjackson/headers";
+import { ObjectParser } from "@edgefirst-dev/data/parser";
+import { Cookie, SetCookie, type SetCookieInit } from "@mjackson/headers";
 import {
 	CodeChallengeMethod,
 	OAuth2Client,
@@ -16,9 +12,11 @@ import createDebug from "debug";
 import { Strategy } from "remix-auth/strategy";
 import { redirect } from "./lib/redirect.js";
 
-let debug = createDebug("OAuth2Strategy");
-
 type URLConstructor = ConstructorParameters<typeof URL>[0];
+
+const debug = createDebug("OAuth2Strategy");
+
+const WELL_KNOWN = ".well-known/openid-configuration";
 
 export class OAuth2Strategy<User> extends Strategy<
 	User,
@@ -180,6 +178,59 @@ export class OAuth2Strategy<User> extends Strategy<
 		let endpoint = this.options.tokenRevocationEndpoint;
 		if (!endpoint) throw new Error("Token revocation endpoint is not set.");
 		return this.client.revokeToken(endpoint.toString(), token);
+	}
+
+	static async discover<U>(
+		uri: string | URL,
+		options: Pick<
+			OAuth2Strategy.ConstructorOptions,
+			"clientId" | "clientSecret" | "cookie" | "redirectURI" | "scopes"
+		> &
+			Partial<
+				Omit<
+					OAuth2Strategy.ConstructorOptions,
+					"clientId" | "clientSecret" | "cookie" | "redirectURI" | "scopes"
+				>
+			>,
+		verify: Strategy.VerifyFunction<U, OAuth2Strategy.VerifyOptions>,
+	) {
+		// Parse the URI into a URL object
+		let url = new URL(uri);
+
+		if (!url.pathname.includes("well-known")) {
+			// Add the well-known path to the URL if it's not already there
+			url.pathname = url.pathname.endsWith("/")
+				? `${url.pathname}${WELL_KNOWN}`
+				: `${url.pathname}/${WELL_KNOWN}`;
+		}
+
+		// Fetch the metadata from the issuer and validate it
+		let response = await fetch(url, {
+			headers: { Accept: "application/json" },
+		});
+
+		// If the response is not OK, throw an error
+		if (!response.ok) throw new Error(`Failed to discover issuer at ${url}`);
+
+		// Parse the response body
+		let parser = new ObjectParser(await response.json());
+
+		return new OAuth2Strategy(
+			{
+				authorizationEndpoint: new URL(parser.string("authorization_endpoint")),
+				tokenEndpoint: new URL(parser.string("token_endpoint")),
+				tokenRevocationEndpoint: parser.has("revocation_endpoint")
+					? new URL(parser.string("revocation_endpoint"))
+					: undefined,
+				codeChallengeMethod: parser.has("code_challenge_methods_supported")
+					? parser.array("code_challenge_methods_supported").includes("S256")
+						? CodeChallengeMethod.S256
+						: CodeChallengeMethod.Plain
+					: undefined,
+				...options,
+			},
+			verify,
+		);
 	}
 }
 

@@ -48,6 +48,7 @@
 		"./package.json": "./package.json"
 	},
 	"dependencies": {
+		"@edgefirst-dev/data": "^0.0.2",
 		"@mjackson/headers": "^0.8.0",
 		"@oslojs/crypto": "^1.0.1",
 		"@oslojs/encoding": "^1.0.0",

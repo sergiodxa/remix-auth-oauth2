@@ -96,3 +96,34 @@ You can revoke the access token the user has with the provider.
 ```ts
 await strategy.revokeToken(user.accessToken);
 ```
+
+### Discovering the Provider
+
+If you want to discover the provider's endpoints, you can use the `discover` static method.
+
+```ts
+export let authenticator = new Authenticator<User>();
+
+authenticator.use(
+  await OAuth2Strategy.discover<User>(
+    "https://provider.com",
+    {
+      clientId: CLIENT_ID,
+      clientSecret: CLIENT_SECRET,
+      redirectURI: "https://example.app/auth/callback",
+      scopes: ["openid", "email", "profile"], // optional
+    },
+    async ({ tokens, request }) => {
+      // here you can use the params above to get the user and return it
+      // what you do inside this and how you find the user is up to you
+      return await getUser(tokens, request);
+    }
+  )
+);
+```
+
+This will fetch the provider's configuration endpoint (`/.well-known/openid-configuration`) and grab the authorization, token and revocation endpoints from it, it will also grab the code challenge method supported and try to use S256 if it is supported.
+
+Remember this will do a fetch when then strategy is created, this will add a latency to the startup of your application.
+
+It's recommended to use this method only once and then copy the endpoints to your configuration.

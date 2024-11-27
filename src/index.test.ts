@@ -10,6 +10,7 @@ import {
 import { Cookie, SetCookie } from "@mjackson/headers";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/native";
+import { Authenticator } from "remix-auth";
 import { OAuth2Strategy } from ".";
 import { catchResponse } from "./test/helpers";
 
@@ -161,5 +162,36 @@ describe(OAuth2Strategy.name, () => {
 		);
 
 		expect(strategy.authenticate(request)).resolves.toEqual(user);
+	});
+
+	test("discovers provider configuration", async () => {
+		let handler = mock().mockImplementationOnce(() =>
+			HttpResponse.json({
+				authorization_endpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+				token_endpoint: "https://oauth2.googleapis.com/token",
+				revocation_endpoint: "https://oauth2.googleapis.com/revoke",
+				code_challenge_methods_supported: ["plain", "S256"],
+			}),
+		);
+
+		server.use(
+			http.get(
+				"https://accounts.google.com/.well-known/openid-configuration",
+				handler,
+			),
+		);
+
+		await OAuth2Strategy.discover(
+			"https://accounts.google.com",
+			{
+				clientId: options.clientId,
+				clientSecret: options.clientSecret,
+				redirectURI: options.redirectURI,
+				scopes: options.scopes,
+			},
+			verify,
+		);
+
+		expect(handler).toHaveBeenCalledTimes(1);
 	});
 });
