@@ -166,6 +166,17 @@ export class OAuth2Strategy<User> extends Strategy<
 		return new URLSearchParams(params);
 	}
 
+	/**
+	 * Get a new OAuth2 Tokens object using the refresh token once the previous
+	 * access token has expired.
+	 * @param refreshToken The refresh token to use to get a new access token
+	 * @returns The new OAuth2 tokens object
+	 * @example
+	 * ```ts
+	 * let tokens = await strategy.refreshToken(refreshToken);
+	 * console.log(tokens.accessToken());
+	 * ```
+	 */
 	public refreshToken(refreshToken: string) {
 		return this.client.refreshAccessToken(
 			this.options.tokenEndpoint.toString(),
@@ -174,12 +185,50 @@ export class OAuth2Strategy<User> extends Strategy<
 		);
 	}
 
+	/**
+	 * Users the token revocation endpoint of the identity provider to revoke the
+	 * access token and make it invalid.
+	 *
+	 * @param token The access token to revoke
+	 * @example
+	 * ```ts
+	 * // Get it from where you stored it
+	 * let accessToken = await getAccessToken();
+	 * await strategy.revokeToken(tokens.access_token);
+	 * ```
+	 */
 	public revokeToken(token: string) {
 		let endpoint = this.options.tokenRevocationEndpoint;
 		if (!endpoint) throw new Error("Token revocation endpoint is not set.");
 		return this.client.revokeToken(endpoint.toString(), token);
 	}
 
+	/**
+	 * Discover the OAuth2 issuer and create a new OAuth2Strategy instance from
+	 * the OIDC configuration that is returned.
+	 *
+	 * This method will fetch the OIDC configuration from the issuer and create a
+	 * new OAuth2Strategy instance with the provided options and verify function.
+	 *
+	 * @param uri The URI of the issuer, this can be a full URL or just the domain
+	 * @param options The rest of the options to pass to the OAuth2Strategy constructor, clientId, clientSecret, redirectURI, and scopes are required.
+	 * @param verify The verify function to use with the OAuth2Strategy instance
+	 * @returns A new OAuth2Strategy instance
+	 * @example
+	 * ```ts
+	 * let strategy = await OAuth2Strategy.discover(
+	 *   "https://accounts.google.com",
+	 *   {
+	 *     clientId: "your-client-id",
+	 *     clientSecret: "your-client-secret",
+	 *     redirectURI: "https://your-app.com/auth/callback",
+	 *     scopes: ["openid", "email", "profile"],
+	 *   },
+	 *   async ({ tokens }) => {
+	 *     return getUserProfile(tokens.access_token);
+	 *   },
+	 * );
+	 */
 	static async discover<U>(
 		uri: string | URL,
 		options: Pick<
