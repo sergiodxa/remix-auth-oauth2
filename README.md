@@ -11,7 +11,6 @@ A strategy to use and implement OAuth2 framework for authentication with federat
 | ---------- | ----------- |
 | Node.js    | ✅          |
 | Cloudflare | ✅          |
-| Deno       | ✅          |
 
 ## How to use
 
