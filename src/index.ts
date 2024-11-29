@@ -314,7 +314,7 @@ export namespace OAuth2Strategy {
 		 * This is the Client Secret of your application, provided to you by the
 		 * Identity Provider you're using to authenticate users.
 		 */
-		clientSecret: string;
+		clientSecret: string | null;
 
 		/**
 		 * The endpoint the Identity Provider asks you to send users to log in, or
@@ -330,7 +330,7 @@ export namespace OAuth2Strategy {
 		 * The URL of your application where the Identity Provider will redirect the
 		 * user after they've logged in or authorized your application.
 		 */
-		redirectURI: URLConstructor;
+		redirectURI: URLConstructor | null;
 
 		/**
 		 * The endpoint the Identity Provider uses to revoke an access or refresh
