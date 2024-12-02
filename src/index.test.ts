@@ -10,9 +10,8 @@ import {
 import { Cookie, SetCookie } from "@mjackson/headers";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/native";
-import { Authenticator } from "remix-auth";
 import { OAuth2Strategy } from ".";
-import { catchResponse } from "./test/helpers";
+import { StateStore } from "./lib/store";
 
 const server = setupServer(
 	http.post("https://example.app/token", async () => {
@@ -78,13 +77,7 @@ describe(OAuth2Strategy.name, () => {
 		expect(redirect.searchParams.get("redirect_uri")).toBe(options.redirectURI);
 		expect(redirect.searchParams.has("state")).toBeTruthy();
 		expect(redirect.searchParams.get("scope")).toBe(options.scopes.join(" "));
-
 		expect(params.get("state")).toBe(redirect.searchParams.get("state"));
-
-		// expect(params.get("codeVerifier")).toBe(
-		// 	redirect.searchParams.get("code_challenge"),
-		// );
-
 		expect(redirect.searchParams.get("code_challenge_method")).toBe("S256");
 	});
 
@@ -103,11 +96,11 @@ describe(OAuth2Strategy.name, () => {
 	test("throws if the state in the url doesn't match the state in the session", async () => {
 		let strategy = new OAuth2Strategy<User>(options, verify);
 
+		let store = new StateStore();
+		store.set("random-state", "random-code-verifier");
+
 		let cookie = new Cookie();
-		cookie.set(
-			"oauth2",
-			new URLSearchParams({ state: "random-state" }).toString(),
-		);
+		cookie.set("oauth2", store.toString());
 
 		let request = new Request(
 			"https://example.com/callback?state=another-state&code=random-code",
@@ -122,14 +115,11 @@ describe(OAuth2Strategy.name, () => {
 	test("calls verify with the tokens and request", async () => {
 		let strategy = new OAuth2Strategy<User>(options, verify);
 
+		let store = new StateStore();
+		store.set("random-state", "random-code-verifier");
+
 		let cookie = new Cookie();
-		cookie.set(
-			"oauth2",
-			new URLSearchParams({
-				state: "random-state",
-				codeVerifier: "random-code-verifier",
-			}).toString(),
-		);
+		cookie.set(store.toSetCookie()?.name as string, store.toString());
 
 		let request = new Request(
 			"https://example.com/callback?state=random-state&code=random-code",
@@ -147,14 +137,11 @@ describe(OAuth2Strategy.name, () => {
 
 		let strategy = new OAuth2Strategy<User>(options, verify);
 
+		let store = new StateStore();
+		store.set("random-state", "random-code-verifier");
+
 		let cookie = new Cookie();
-		cookie.set(
-			"oauth2",
-			new URLSearchParams({
-				state: "random-state",
-				codeVerifier: "random-code-verifier",
-			}).toString(),
-		);
+		cookie.set(store.toSetCookie()?.name as string, store.toString());
 
 		let request = new Request(
 			"https://example.com/callback?state=random-state&code=random-code",
@@ -194,4 +181,63 @@ describe(OAuth2Strategy.name, () => {
 
 		expect(handler).toHaveBeenCalledTimes(1);
 	});
+
+	test("handles race condition of state and code verifier", async () => {
+		let verify = mock().mockImplementation(() => ({ id: "123" }));
+		let strategy = new OAuth2Strategy<User>(options, verify);
+
+		let responses = await Promise.all(
+			Array.from({ length: random() }, () =>
+				catchResponse(
+					strategy.authenticate(new Request("https://remix.auth/login")),
+				),
+			),
+		);
+
+		let setCookies: SetCookie[] = responses
+			.flatMap((res) => res.headers.getSetCookie())
+			.map((header) => new SetCookie(header));
+
+		let cookie = new Cookie();
+
+		for (let setCookie of setCookies) {
+			cookie.set(setCookie.name as string, setCookie.value as string);
+		}
+
+		let urls = setCookies.map((setCookie) => {
+			let params = new URLSearchParams(setCookie.value);
+			let url = new URL("https://remix.auth/callback");
+			url.searchParams.set("state", params.get("state") as string);
+			url.searchParams.set("code", crypto.randomUUID());
+			return url;
+		});
+
+		await Promise.all(
+			urls.map((url) =>
+				strategy.authenticate(
+					new Request(url, { headers: { cookie: cookie.toString() } }),
+				),
+			),
+		);
+
+		expect(verify).toHaveBeenCalledTimes(responses.length);
+	});
 });
+
+function isResponse(value: unknown): value is Response {
+	return value instanceof Response;
+}
+
+async function catchResponse(promise: Promise<unknown>) {
+	try {
+		await promise;
+		throw new Error("Should have failed.");
+	} catch (error) {
+		if (isResponse(error)) return error;
+		throw error;
+	}
+}
+
+function random(min = 1, max = 10) {
+	return Math.floor(Math.random() * (max - min + 1)) + min;
+}
