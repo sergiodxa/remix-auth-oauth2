@@ -35,7 +35,7 @@ export class OAuth2Strategy<User> extends Strategy<
 		this.client = new OAuth2Client(
 			options.clientId,
 			options.clientSecret,
-			options.redirectURI.toString(),
+			options.redirectURI?.toString() ?? null,
 		);
 	}
 
