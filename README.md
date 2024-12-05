@@ -75,7 +75,7 @@ You will now need a route on that URI to handle the callback from the provider.
 
 ```ts
 export async function loader({ request }: Route.LoaderArgs) {
-  let user = await authenticator.authenticate("provider-name", { request });
+  let user = await authenticator.authenticate("provider-name", request);
   // now you have the user object with the data you returned in the verify function
 }
 ```
