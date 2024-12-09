@@ -264,7 +264,7 @@ export class OAuth2Strategy<User> extends Strategy<
 		// Parse the response body
 		let parser = new ObjectParser(await response.json());
 
-		return new OAuth2Strategy(
+		return new this(
 			{
 				authorizationEndpoint: new URL(parser.string("authorization_endpoint")),
 				tokenEndpoint: new URL(parser.string("token_endpoint")),
