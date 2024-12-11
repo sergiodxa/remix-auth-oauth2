@@ -1,5 +1,5 @@
 import { ObjectParser } from "@edgefirst-dev/data/parser";
-import { Cookie, SetCookie, type SetCookieInit } from "@mjackson/headers";
+import { type SetCookieInit } from "@mjackson/headers";
 import {
 	CodeChallengeMethod,
 	OAuth2Client,
@@ -11,12 +11,15 @@ import {
 import createDebug from "debug";
 import { Strategy } from "remix-auth/strategy";
 import { redirect } from "./lib/redirect.js";
+import { StateStore } from "./lib/store.js";
 
 type URLConstructor = ConstructorParameters<typeof URL>[0];
 
 const debug = createDebug("OAuth2Strategy");
 
 const WELL_KNOWN = ".well-known/openid-configuration";
+
+export { OAuth2RequestError };
 
 export class OAuth2Strategy<User> extends Strategy<
 	User,
@@ -80,18 +83,15 @@ export class OAuth2Strategy<User> extends Strategy<
 
 			debug("Authorization URL", url.toString());
 
-			let header = new SetCookie({
-				name: this.cookieName,
-				value: new URLSearchParams({ state, codeVerifier }).toString(),
-				httpOnly: true, // Prevents JavaScript from accessing the cookie
-				maxAge: 60 * 5, // 5 minutes
-				path: "/", // Allow the cookie to be sent to any path
-				sameSite: "Lax", // Prevents it from being sent in cross-site requests
-				...this.cookieOptions,
-			});
+			let store = StateStore.fromRequest(request, this.cookieName);
+			store.set(state, codeVerifier);
 
 			throw redirect(url.toString(), {
-				headers: { "Set-Cookie": header.toString() },
+				headers: {
+					"Set-Cookie": store
+						.toSetCookie(this.cookieName, this.cookieOptions)
+						.toString(),
+				},
 			});
 		}
 
@@ -99,26 +99,24 @@ export class OAuth2Strategy<User> extends Strategy<
 
 		if (!code) throw new ReferenceError("Missing code in the URL");
 
-		let cookie = new Cookie(request.headers.get("cookie") ?? "");
-		let params = new URLSearchParams(cookie.get(this.cookieName));
+		let store = StateStore.fromRequest(request);
 
-		if (!params.has("state")) {
+		if (!store.has()) {
 			throw new ReferenceError("Missing state on cookie.");
 		}
 
-		if (params.get("state") !== stateUrl) {
+		if (!store.has(stateUrl)) {
 			throw new RangeError("State in URL doesn't match state in cookie.");
 		}
 
-		if (!params.has("codeVerifier")) {
+		let codeVerifier = store.get(stateUrl);
+
+		if (!codeVerifier) {
 			throw new ReferenceError("Missing code verifier on cookie.");
 		}
 
 		debug("Validating authorization code");
-		let tokens = await this.validateAuthorizationCode(
-			code,
-			params.get("codeVerifier") as string, // We checked above this is defined
-		);
+		let tokens = await this.validateAuthorizationCode(code, codeVerifier);
 
 		debug("Verifying the user profile");
 		let user = await this.verify({ request, tokens });
