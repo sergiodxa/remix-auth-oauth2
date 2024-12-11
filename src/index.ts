@@ -19,6 +19,8 @@ const debug = createDebug("OAuth2Strategy");
 
 const WELL_KNOWN = ".well-known/openid-configuration";
 
+export { OAuth2RequestError };
+
 export class OAuth2Strategy<User> extends Strategy<
 	User,
 	OAuth2Strategy.VerifyOptions
@@ -114,10 +116,7 @@ export class OAuth2Strategy<User> extends Strategy<
 		}
 
 		debug("Validating authorization code");
-		let tokens = await this.validateAuthorizationCode(
-			code,
-			codeVerifier, // We checked above this is defined
-		);
+		let tokens = await this.validateAuthorizationCode(code, codeVerifier);
 
 		debug("Verifying the user profile");
 		let user = await this.verify({ request, tokens });
