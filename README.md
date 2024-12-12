@@ -2,7 +2,7 @@
 
 A strategy to use and implement OAuth2 framework for authentication with federated services like Google, Facebook, GitHub, etc.
 
-> [!WARN]
+> [!WARNING]
 > This strategy expects the identity provider to strictly follow the OAuth2 specification. If the provider does not follow the specification and diverges from it, this strategy may not work as expected.
 
 ## Supported runtimes
