@@ -182,6 +182,40 @@ describe(OAuth2Strategy.name, () => {
 		expect(handler).toHaveBeenCalledTimes(1);
 	});
 
+	test("discover in a subclass returns the subclass", async () => {
+		class SubStrategy<U> extends OAuth2Strategy<U> {}
+
+		let handler = mock().mockImplementationOnce(() =>
+			HttpResponse.json({
+				authorization_endpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+				token_endpoint: "https://oauth2.googleapis.com/token",
+				revocation_endpoint: "https://oauth2.googleapis.com/revoke",
+				code_challenge_methods_supported: ["plain", "S256"],
+			}),
+		);
+
+		server.use(
+			http.get(
+				"https://accounts.google.com/.well-known/openid-configuration",
+				handler,
+			),
+		);
+
+		let strategy = await SubStrategy.discover<User, SubStrategy<User>>(
+			"https://accounts.google.com",
+			{
+				clientId: options.clientId,
+				clientSecret: options.clientSecret,
+				redirectURI: options.redirectURI,
+				scopes: options.scopes,
+			},
+			verify,
+		);
+
+		expect(strategy).toBeInstanceOf(SubStrategy);
+		expect(handler).toHaveBeenCalledTimes(1);
+	});
+
 	test("handles race condition of state and code verifier", async () => {
 		let verify = mock().mockImplementation(() => ({ id: "123" }));
 		let strategy = new OAuth2Strategy<User>(options, verify);

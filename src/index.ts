@@ -227,7 +227,11 @@ export class OAuth2Strategy<User> extends Strategy<
 	 *   },
 	 * );
 	 */
-	static async discover<U>(
+	static async discover<U, M extends OAuth2Strategy<U> = OAuth2Strategy<U>>(
+		this: new (
+			options: OAuth2Strategy.ConstructorOptions,
+			verify: Strategy.VerifyFunction<U, OAuth2Strategy.VerifyOptions>,
+		) => M,
 		uri: string | URL,
 		options: Pick<
 			OAuth2Strategy.ConstructorOptions,
@@ -262,6 +266,7 @@ export class OAuth2Strategy<User> extends Strategy<
 		// Parse the response body
 		let parser = new ObjectParser(await response.json());
 
+		// biome-ignore lint/complexity/noThisInStatic: This is need for subclasses
 		return new this(
 			{
 				authorizationEndpoint: new URL(parser.string("authorization_endpoint")),
