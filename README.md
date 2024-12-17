@@ -25,11 +25,15 @@ npm add remix-auth-oauth2
 You can use this strategy by adding it to your authenticator instance and configuring the correct endpoints.
 
 ```ts
-export let authenticator = new Authenticator<User>();
+import { OAuthStrategy, CodeChallengeMethod } from "remix-auth-oauth2";
+
+export const authenticator = new Authenticator<User>();
 
 authenticator.use(
   new OAuth2Strategy(
     {
+      cookie: "oauth2", // Optional, can also be an object with more options
+
       clientId: CLIENT_ID,
       clientSecret: CLIENT_SECRET,
 
@@ -39,10 +43,8 @@ authenticator.use(
 
       tokenRevocationEndpoint: "https://provider.com/oauth2/revoke", // optional
 
-      codeChallengeMethod: "S256", // optional
       scopes: ["openid", "email", "profile"], // optional
-
-      authenticateWith: "request_body", // optional
+      codeChallengeMethod: CodeChallengeMethod.S256, // optional
     },
     async ({ tokens, request }) => {
       // here you can use the params above to get the user and return it
@@ -155,3 +157,34 @@ This will fetch the provider's configuration endpoint (`/.well-known/openid-conf
 Remember this will do a fetch when then strategy is created, this will add a latency to the startup of your application.
 
 It's recommended to use this method only once and then copy the endpoints to your configuration.
+
+### Customizing the Cookie
+
+You can customize the cookie options by passing an object to the `cookie` option.
+
+```ts
+authenticator.use(
+  new OAuth2Strategy<User>(
+    {
+      cookie: {
+        name: "oauth2",
+        maxAge: 60 * 60 * 24 * 7, // 1 week
+        path: "/auth",
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+      },
+      clientId: CLIENT_ID,
+      clientSecret: CLIENT_SECRET,
+      authorizationEndpoint: "https://provider.com/oauth2/authorize",
+      tokenEndpoint: "https://provider.com/oauth2/token",
+      redirectURI: "https://example.app/auth/callback",
+    },
+    async ({ tokens, request }) => {
+      return await getUser(tokens, request);
+    }
+  )
+);
+```
+
+This will set the cookie with the name `oauth2`, with a max age of 1 week, only accessible on the `/auth` path, http only, same site lax and secure if the application is running in production.

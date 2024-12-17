@@ -19,7 +19,7 @@ const debug = createDebug("OAuth2Strategy");
 
 const WELL_KNOWN = ".well-known/openid-configuration";
 
-export { OAuth2RequestError };
+export { OAuth2RequestError, CodeChallengeMethod };
 
 export class OAuth2Strategy<User> extends Strategy<
 	User,
