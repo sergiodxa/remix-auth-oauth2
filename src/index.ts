@@ -99,7 +99,7 @@ export class OAuth2Strategy<User> extends Strategy<
 
 		if (!code) throw new ReferenceError("Missing code in the URL");
 
-		let store = StateStore.fromRequest(request);
+		let store = StateStore.fromRequest(request, this.cookieName);
 
 		if (!store.has()) {
 			throw new ReferenceError("Missing state on cookie.");
