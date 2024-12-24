@@ -104,10 +104,9 @@ export class StateStore {
 
 		for (let name of cookie.names()) {
 			if (name.startsWith(cookieName)) {
-				// biome-ignore lint/complexity/noForEach: This is ok
-				new URLSearchParams(cookie.get(name))
-					.entries()
-					.forEach(([key, value]) => params.append(key, value));
+				for (let [key, value] of new URLSearchParams(cookie.get(name))) {
+					params.append(key, value);
+				}
 			}
 		}
 
