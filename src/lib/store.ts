@@ -37,12 +37,12 @@ export class StateStore {
 	/**
 	 * Append a new state and code verifier to the store
 	 */
-	set(state: string, verifier: string) {
+	set(state: string, verifier?: string) {
 		this.state = state;
 		this.codeVerifier = verifier;
 
 		this.states.add(state);
-		this.codeVerifiers.set(state, verifier);
+		if (verifier) this.codeVerifiers.set(state, verifier);
 	}
 
 	/**
