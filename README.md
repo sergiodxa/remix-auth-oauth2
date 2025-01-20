@@ -25,7 +25,7 @@ npm add remix-auth-oauth2
 You can use this strategy by adding it to your authenticator instance and configuring the correct endpoints.
 
 ```ts
-import { OAuthStrategy, CodeChallengeMethod } from "remix-auth-oauth2";
+import { OAuth2Strategy, CodeChallengeMethod } from "remix-auth-oauth2";
 
 export const authenticator = new Authenticator<User>();
 
