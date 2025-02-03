@@ -49,7 +49,7 @@
 	},
 	"dependencies": {
 		"@edgefirst-dev/data": "^0.0.2",
-		"@mjackson/headers": "^0.9.0",
+		"@mjackson/headers": "^0.10.0",
 		"arctic": "^3.0.0",
 		"debug": "^4.3.7"
 	},
