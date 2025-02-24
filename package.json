@@ -48,7 +48,7 @@
 		"./package.json": "./package.json"
 	},
 	"dependencies": {
-		"@edgefirst-dev/data": "^0.0.3",
+		"@edgefirst-dev/data": "^0.0.4",
 		"@mjackson/headers": "^0.10.0",
 		"arctic": "^3.0.0",
 		"debug": "^4.3.7"
