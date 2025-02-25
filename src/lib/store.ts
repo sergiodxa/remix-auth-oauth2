@@ -102,9 +102,11 @@ export class StateStore {
 
 		let params = new URLSearchParams();
 
-		for (let name of cookie.names()) {
+		for (let name of cookie.names) {
 			if (name.startsWith(cookieName)) {
-				for (let [key, value] of new URLSearchParams(cookie.get(name))) {
+				let cookieInstance = cookie.get(name);
+				if (!cookieInstance) continue;
+				for (let [key, value] of new URLSearchParams(cookieInstance)) {
 					params.append(key, value);
 				}
 			}
