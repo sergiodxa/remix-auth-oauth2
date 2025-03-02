@@ -67,8 +67,22 @@ export class OAuth2Strategy<User> extends Strategy<
 		let url = new URL(request.url);
 
 		let stateUrl = url.searchParams.get("state");
-		let error = url.searchParams.get("error");
 
+		let store = StateStore.fromRequest(request, this.cookieName);
+
+		// If there's a `state` param in the querystring, validate it against the
+		// cookie first to  prevent CSRF attacks.
+		if (stateUrl) {
+			if (!store.has()) {
+				throw new ReferenceError("Missing state on cookie.");
+			}
+
+			if (!store.has(stateUrl)) {
+				throw new RangeError("State in URL doesn't match state in cookie.");
+			}
+		}
+
+		let error = url.searchParams.get("error");
 		if (error) {
 			let description = url.searchParams.get("error_description");
 			let uri = url.searchParams.get("error_uri");
@@ -105,16 +119,6 @@ export class OAuth2Strategy<User> extends Strategy<
 		let code = url.searchParams.get("code");
 
 		if (!code) throw new ReferenceError("Missing code in the URL");
-
-		let store = StateStore.fromRequest(request, this.cookieName);
-
-		if (!store.has()) {
-			throw new ReferenceError("Missing state on cookie.");
-		}
-
-		if (!store.has(stateUrl)) {
-			throw new RangeError("State in URL doesn't match state in cookie.");
-		}
 
 		let codeVerifier = store.get(stateUrl);
 
