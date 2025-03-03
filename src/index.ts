@@ -67,13 +67,6 @@ export class OAuth2Strategy<User> extends Strategy<
 		let url = new URL(request.url);
 
 		let stateUrl = url.searchParams.get("state");
-		let error = url.searchParams.get("error");
-
-		if (error) {
-			let description = url.searchParams.get("error_description");
-			let uri = url.searchParams.get("error_uri");
-			throw new OAuth2RequestError(error, description, uri, stateUrl);
-		}
 
 		if (!stateUrl) {
 			debug("No state found in the URL, redirecting to authorization endpoint");
@@ -102,10 +95,6 @@ export class OAuth2Strategy<User> extends Strategy<
 			});
 		}
 
-		let code = url.searchParams.get("code");
-
-		if (!code) throw new ReferenceError("Missing code in the URL");
-
 		let store = StateStore.fromRequest(request, this.cookieName);
 
 		if (!store.has()) {
@@ -115,6 +104,18 @@ export class OAuth2Strategy<User> extends Strategy<
 		if (!store.has(stateUrl)) {
 			throw new RangeError("State in URL doesn't match state in cookie.");
 		}
+
+		let error = url.searchParams.get("error");
+
+		if (error) {
+			let description = url.searchParams.get("error_description");
+			let uri = url.searchParams.get("error_uri");
+			throw new OAuth2RequestError(error, description, uri, stateUrl);
+		}
+
+		let code = url.searchParams.get("code");
+
+		if (!code) throw new ReferenceError("Missing code in the URL");
 
 		let codeVerifier = store.get(stateUrl);
 
