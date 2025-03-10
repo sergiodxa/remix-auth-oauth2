@@ -76,6 +76,14 @@ export class OAuth2Strategy<User> extends Strategy<
 			debug("State", state);
 			debug("Code verifier", codeVerifier);
 
+			if (this.options.audience) {
+				if (Array.isArray(this.options.audience)) {
+					for (let audience of this.options.audience) {
+						url.searchParams.append("audience", audience);
+					}
+				} else url.searchParams.append("audience", this.options.audience);
+			}
+
 			url.search = this.authorizationParams(
 				url.searchParams,
 				request,
@@ -363,5 +371,14 @@ export namespace OAuth2Strategy {
 		 * @default "CodeChallengeMethod.S256"
 		 */
 		codeChallengeMethod?: CodeChallengeMethod;
+
+		/**
+		 * The audience of the token to request from the Identity Provider. This is
+		 * used when the Identity Provider requires a specific audience to be set on
+		 * the token.
+		 *
+		 * This can be a string or an array of strings.
+		 */
+		audience?: string | string[];
 	}
 }

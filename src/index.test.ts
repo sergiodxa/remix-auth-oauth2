@@ -81,6 +81,41 @@ describe(OAuth2Strategy.name, () => {
 		expect(redirect.searchParams.get("code_challenge_method")).toBe("S256");
 	});
 
+	test("redirects with the audience if configured", async () => {
+		let strategy = new OAuth2Strategy<User>(
+			{ ...options, audience: "api.example.com" },
+			verify,
+		);
+
+		let request = new Request("https://remix.auth/login");
+
+		let response = await catchResponse(strategy.authenticate(request));
+
+		// biome-ignore lint/style/noNonNullAssertion: This is a test
+		let redirect = new URL(response.headers.get("location")!);
+
+		expect(redirect.searchParams.get("audience")).toBe("api.example.com");
+	});
+
+	test("redirects with multiple audience if configured as array", async () => {
+		let strategy = new OAuth2Strategy<User>(
+			{ ...options, audience: ["api.example.com", "internal.example.com"] },
+			verify,
+		);
+
+		let request = new Request("https://remix.auth/login");
+
+		let response = await catchResponse(strategy.authenticate(request));
+
+		// biome-ignore lint/style/noNonNullAssertion: This is a test
+		let redirect = new URL(response.headers.get("location")!);
+
+		expect(redirect.searchParams.getAll("audience")).toEqual([
+			"api.example.com",
+			"internal.example.com",
+		]);
+	});
+
 	test("throws if there's no state in the session", async () => {
 		let strategy = new OAuth2Strategy<User>(options, verify);
 
