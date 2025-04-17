@@ -64,7 +64,7 @@ First, you will call the `authenticate` method with the provider name you set in
 
 ```ts
 export async function action({ request }: Route.ActionArgs) {
-  await authenticator.authenticate("provider-name", { request });
+  await authenticator.authenticate("provider-name", request);
 }
 ```
 
