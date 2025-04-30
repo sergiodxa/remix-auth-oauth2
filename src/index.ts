@@ -1,333 +1,167 @@
+import { ObjectParser } from "@edgefirst-dev/data/parser";
+import { type SetCookieInit } from "@mjackson/headers";
 import {
-	type AppLoadContext,
-	type SessionStorage,
-	redirect,
-} from "@remix-run/server-runtime";
+	CodeChallengeMethod,
+	OAuth2Client,
+	OAuth2RequestError,
+	type OAuth2Tokens,
+	UnexpectedErrorResponseBodyError,
+	UnexpectedResponseError,
+	generateCodeVerifier,
+	generateState,
+} from "arctic";
 import createDebug from "debug";
-import {
-	type AuthenticateOptions,
-	Strategy,
-	type StrategyVerifyCallback,
-} from "remix-auth";
-import { AuthorizationCode } from "./lib/authorization-code.js";
-import { Generator } from "./lib/generator.js";
-import { OAuth2Request } from "./lib/request.js";
-import { Token } from "./lib/token.js";
-
-let debug = createDebug("OAuth2Strategy");
-
-export interface OAuth2Profile {
-	provider: string;
-	id?: string;
-	displayName?: string;
-	name?: {
-		familyName?: string;
-		givenName?: string;
-		middleName?: string;
-	};
-	emails?: Array<{
-		value: string;
-		type?: string;
-	}>;
-	photos?: Array<{ value: string }>;
-}
+import { Strategy } from "remix-auth/strategy";
+import { redirect } from "./lib/redirect.js";
+import { StateStore } from "./lib/store.js";
 
 type URLConstructor = ConstructorParameters<typeof URL>[0];
 
-export interface OAuth2StrategyOptions {
-	/**
-	 * This is the Client ID of your application, provided to you by the Identity
-	 * Provider you're using to authenticate users.
-	 */
-	clientId: string;
-	/**
-	 * This is the Client Secret of your application, provided to you by the
-	 * Identity Provider you're using to authenticate users.
-	 */
-	clientSecret: string;
+const debug = createDebug("OAuth2Strategy");
 
-	/**
-	 * The endpoint the Identity Provider asks you to send users to log in, or
-	 * authorize your application.
-	 */
-	authorizationEndpoint: URLConstructor;
-	/**
-	 * The endpoint the Identity Provider uses to let's you exchange an access
-	 * code for an access and refresh token.
-	 */
-	tokenEndpoint: URLConstructor;
-	/**
-	 * The URL of your application where the Identity Provider will redirect the
-	 * user after they've logged in or authorized your application.
-	 */
-	redirectURI: URLConstructor;
+const WELL_KNOWN = ".well-known/openid-configuration";
 
-	/**
-	 * The endpoint the Identity Provider uses to revoke an access or refresh
-	 * token, this can be useful to log out the user.
-	 */
-	tokenRevocationEndpoint?: URLConstructor;
+export {
+	OAuth2RequestError,
+	CodeChallengeMethod,
+	UnexpectedResponseError,
+	UnexpectedErrorResponseBodyError,
+};
 
-	/**
-	 * The scopes you want to request from the Identity Provider, this is a list
-	 * of strings that represent the permissions you want to request from the
-	 * user.
-	 */
-	scopes?: string[];
-
-	/**
-	 * The code challenge method to use when sending the authorization request.
-	 * This is used when the Identity Provider requires a code challenge to be
-	 * sent with the authorization request.
-	 * @default "S256"
-	 */
-	codeChallengeMethod?: "S256" | "plain";
-
-	/**
-	 * The method to use to authenticate with the Identity Provider, this can be
-	 * either `http_basic_auth` or `request_body`.
-	 * @default "request_body"
-	 */
-	authenticateWith?: "http_basic_auth" | "request_body";
-}
-
-export interface OAuth2StrategyVerifyParams<
-	Profile extends OAuth2Profile,
-	ExtraTokenParams extends Record<string, unknown> = Record<string, never>,
-> {
-	tokens: Token.Response.Body & ExtraTokenParams;
-	profile: Profile;
-	request: Request;
-	context?: AppLoadContext;
-}
-
-export class OAuth2Strategy<
+export class OAuth2Strategy<User> extends Strategy<
 	User,
-	Profile extends OAuth2Profile,
-	ExtraParams extends Record<string, unknown> = Record<string, never>,
-> extends Strategy<User, OAuth2StrategyVerifyParams<Profile, ExtraParams>> {
-	name = "oauth2";
+	OAuth2Strategy.VerifyOptions
+> {
+	override name = "oauth2";
 
-	protected sessionStateKey = "oauth2:state";
-	protected sessionCodeVerifierKey = "oauth2:codeVerifier";
-	protected options: OAuth2StrategyOptions;
+	protected client: OAuth2Client;
 
 	constructor(
-		options: OAuth2StrategyOptions,
-		verify: StrategyVerifyCallback<
-			User,
-			OAuth2StrategyVerifyParams<Profile, ExtraParams>
-		>,
+		protected options: OAuth2Strategy.ConstructorOptions,
+		verify: Strategy.VerifyFunction<User, OAuth2Strategy.VerifyOptions>,
 	) {
 		super(verify);
-		this.options = {
-			codeChallengeMethod: "S256",
-			authenticateWith: "request_body",
-			...options,
-		};
+
+		this.client = new OAuth2Client(
+			options.clientId,
+			options.clientSecret,
+			options.redirectURI?.toString() ?? null,
+		);
 	}
 
-	async authenticate(
-		request: Request,
-		sessionStorage: SessionStorage,
-		options: AuthenticateOptions,
-	): Promise<User> {
+	private get cookieName() {
+		if (typeof this.options.cookie === "string") {
+			return this.options.cookie || "oauth2";
+		}
+		return this.options.cookie?.name ?? "oauth2";
+	}
+
+	private get cookieOptions() {
+		if (typeof this.options.cookie !== "object") return {};
+		return this.options.cookie ?? {};
+	}
+
+	override async authenticate(request: Request): Promise<User> {
 		debug("Request URL", request.url);
 
 		let url = new URL(request.url);
-
-		if (url.searchParams.has("error")) {
-			return this.failure(
-				"Error on authentication",
-				request,
-				sessionStorage,
-				options,
-				new OAuth2Error(request, {
-					error: url.searchParams.get("error") ?? undefined,
-					error_description:
-						url.searchParams.get("error_description") ?? undefined,
-					error_uri: url.searchParams.get("error_uri") ?? undefined,
-				}),
-			);
-		}
-
-		let session = await sessionStorage.getSession(
-			request.headers.get("Cookie"),
-		);
 
 		let stateUrl = url.searchParams.get("state");
 
 		if (!stateUrl) {
 			debug("No state found in the URL, redirecting to authorization endpoint");
 
-			let state = Generator.state();
-			session.set(this.sessionStateKey, state);
+			let { state, codeVerifier, url } = this.createAuthorizationURL();
 
 			debug("State", state);
-
-			let codeVerifier = Generator.codeVerifier();
-			session.set(this.sessionCodeVerifierKey, codeVerifier);
-
 			debug("Code verifier", codeVerifier);
 
-			let authorizationURL = new AuthorizationCode.AuthorizationURL(
-				this.options.authorizationEndpoint.toString(),
-				this.options.clientId,
-			);
-
-			authorizationURL.setRedirectURI(this.options.redirectURI.toString());
-			authorizationURL.setState(state);
-
-			if (this.options.scopes)
-				authorizationURL.addScopes(...this.options.scopes);
-
-			if (this.options.codeChallengeMethod === "S256") {
-				authorizationURL.setS256CodeChallenge(codeVerifier);
-			} else if (this.options.codeChallengeMethod === "plain") {
-				authorizationURL.setPlainCodeChallenge(codeVerifier);
+			if (this.options.audience) {
+				if (Array.isArray(this.options.audience)) {
+					for (let audience of this.options.audience) {
+						url.searchParams.append("audience", audience);
+					}
+				} else url.searchParams.append("audience", this.options.audience);
 			}
 
-			// Extend authorization URL with extra non-standard params
-			authorizationURL.search = this.authorizationParams(
-				authorizationURL.searchParams,
+			url.search = this.authorizationParams(
+				url.searchParams,
 				request,
 			).toString();
 
-			debug("Authorization URL", authorizationURL.toString());
+			debug("Authorization URL", url.toString());
 
-			throw redirect(authorizationURL.toString(), {
+			let store = StateStore.fromRequest(request, this.cookieName);
+			store.set(state, codeVerifier);
+
+			throw redirect(url.toString(), {
 				headers: {
-					"Set-Cookie": await sessionStorage.commitSession(session),
+					"Set-Cookie": store
+						.toSetCookie(this.cookieName, this.cookieOptions)
+						.toString(),
 				},
 			});
 		}
 
+		let store = StateStore.fromRequest(request, this.cookieName);
+
+		if (!store.has()) {
+			throw new ReferenceError("Missing state on cookie.");
+		}
+
+		if (!store.has(stateUrl)) {
+			throw new RangeError("State in URL doesn't match state in cookie.");
+		}
+
+		let error = url.searchParams.get("error");
+
+		if (error) {
+			let description = url.searchParams.get("error_description");
+			let uri = url.searchParams.get("error_uri");
+			throw new OAuth2RequestError(error, description, uri, stateUrl);
+		}
+
 		let code = url.searchParams.get("code");
-		let codeVerifier = session.get(this.sessionCodeVerifierKey);
 
-		if (!code && url.searchParams.has("error")) {
-			return this.failure(
-				"Error during authentication",
-				request,
-				sessionStorage,
-				options,
-				new OAuth2Error(request, {
-					error: url.searchParams.get("error") ?? undefined,
-					error_description:
-						url.searchParams.get("error_description") ?? undefined,
-					error_uri: url.searchParams.get("error_uri") ?? undefined,
-				}),
-			);
+		if (!code) throw new ReferenceError("Missing code in the URL");
+
+		let codeVerifier = store.get(stateUrl);
+
+		if (!codeVerifier) {
+			throw new ReferenceError("Missing code verifier on cookie.");
 		}
 
-		if (!code) {
-			return this.failure(
-				"Missing code in the URL",
-				request,
-				sessionStorage,
-				options,
-				new ReferenceError("Missing code in the URL"),
-			);
-		}
+		debug("Validating authorization code");
+		let tokens = await this.validateAuthorizationCode(code, codeVerifier);
 
-		let stateSession = session.get(this.sessionStateKey);
-		debug("State from session", stateSession);
-		if (!stateSession) {
-			return await this.failure(
-				"Missing state on session.",
-				request,
-				sessionStorage,
-				options,
-				new ReferenceError("Missing state on session."),
-			);
-		}
+		debug("Verifying the user profile");
+		let user = await this.verify({ request, tokens });
 
-		if (stateSession === stateUrl) {
-			debug("State is valid");
-			session.unset(this.sessionStateKey);
-		} else {
-			return await this.failure(
-				"State in URL doesn't match state in session.",
-				request,
-				sessionStorage,
-				options,
-				new RangeError("State in URL doesn't match state in session."),
-			);
-		}
-
-		try {
-			debug("Validating authorization code");
-			let context = new Token.Request.Context(code);
-
-			context.setRedirectURI(this.options.redirectURI.toString());
-			context.setCodeVerifier(codeVerifier);
-
-			if (this.options.authenticateWith === "http_basic_auth") {
-				context.authenticateWithHTTPBasicAuth(
-					this.options.clientId,
-					this.options.clientSecret,
-				);
-			} else if (this.options.authenticateWith === "request_body") {
-				context.authenticateWithRequestBody(
-					this.options.clientId,
-					this.options.clientSecret,
-				);
-			}
-
-			let tokens = await Token.Request.send<ExtraParams>(
-				this.options.tokenEndpoint.toString(),
-				context,
-				{ signal: request.signal },
-			);
-
-			debug("Fetching the user profile");
-			let profile = await this.userProfile(tokens);
-
-			debug("Verifying the user profile");
-			let user = await this.verify({
-				tokens,
-				profile,
-				context: options.context,
-				request,
-			});
-
-			debug("User authenticated");
-			return this.success(user, request, sessionStorage, options);
-		} catch (error) {
-			// Allow responses to pass-through
-			if (error instanceof Response) throw error;
-
-			debug("Failed to verify user", error);
-			if (error instanceof Error) {
-				return await this.failure(
-					error.message,
-					request,
-					sessionStorage,
-					options,
-					error,
-				);
-			}
-			if (typeof error === "string") {
-				return await this.failure(
-					error,
-					request,
-					sessionStorage,
-					options,
-					new Error(error),
-				);
-			}
-			return await this.failure(
-				"Unknown error",
-				request,
-				sessionStorage,
-				options,
-				new Error(JSON.stringify(error, null, 2)),
-			);
-		}
+		debug("User authenticated");
+		return user;
 	}
 
-	protected async userProfile(tokens: Token.Response.Body): Promise<Profile> {
-		return { provider: "oauth2" } as Profile;
+	protected createAuthorizationURL() {
+		let state = generateState();
+		let codeVerifier = generateCodeVerifier();
+
+		let url = this.client.createAuthorizationURLWithPKCE(
+			this.options.authorizationEndpoint.toString(),
+			state,
+			this.options.codeChallengeMethod ?? CodeChallengeMethod.S256,
+			codeVerifier,
+			this.options.scopes ?? [],
+		);
+
+		return { state, codeVerifier, url };
+	}
+
+	protected validateAuthorizationCode(code: string, codeVerifier: string) {
+		return this.client.validateAuthorizationCode(
+			this.options.tokenEndpoint.toString(),
+			code,
+			codeVerifier,
+		);
 	}
 
 	/**
@@ -347,97 +181,204 @@ export class OAuth2Strategy<
 	}
 
 	/**
-	 * Get new tokens using a refresh token.
-	 * @param refreshToken The refresh token to use
-	 * @param options Optional options to override the default strategy options
-	 * @returns A promise that resolves to the new tokens
+	 * Get a new OAuth2 Tokens object using the refresh token once the previous
+	 * access token has expired.
+	 * @param refreshToken The refresh token to use to get a new access token
+	 * @returns The new OAuth2 tokens object
+	 * @example
+	 * ```ts
+	 * let tokens = await strategy.refreshToken(refreshToken);
+	 * console.log(tokens.accessToken());
+	 * ```
 	 */
-	public refreshToken(
-		refreshToken: string,
-		options: Partial<Pick<OAuth2StrategyOptions, "scopes">> & {
-			signal?: AbortSignal;
-		} = {},
-	) {
-		let scopes = options.scopes ?? this.options.scopes ?? [];
-
-		let context = new Token.RefreshRequest.Context(refreshToken);
-
-		context.addScopes(...scopes);
-
-		if (this.options.authenticateWith === "http_basic_auth") {
-			context.authenticateWithHTTPBasicAuth(
-				this.options.clientId,
-				this.options.clientSecret,
-			);
-		} else if (this.options.authenticateWith === "request_body") {
-			context.authenticateWithRequestBody(
-				this.options.clientId,
-				this.options.clientSecret,
-			);
-		}
-
-		return Token.Request.send<ExtraParams>(
+	public refreshToken(refreshToken: string) {
+		return this.client.refreshAccessToken(
 			this.options.tokenEndpoint.toString(),
-			context,
-			{ signal: options.signal },
+			refreshToken,
+			this.options.scopes ?? [],
 		);
 	}
 
-	public async revokeToken(
-		token: string,
-		options: {
-			signal?: AbortSignal;
-			tokenType?: "access_token" | "refresh_token";
-		} = {},
+	/**
+	 * Users the token revocation endpoint of the identity provider to revoke the
+	 * access token and make it invalid.
+	 *
+	 * @param token The access token to revoke
+	 * @example
+	 * ```ts
+	 * // Get it from where you stored it
+	 * let accessToken = await getAccessToken();
+	 * await strategy.revokeToken(tokens.access_token);
+	 * ```
+	 */
+	public revokeToken(token: string) {
+		let endpoint = this.options.tokenRevocationEndpoint;
+		if (!endpoint) throw new Error("Token revocation endpoint is not set.");
+		return this.client.revokeToken(endpoint.toString(), token);
+	}
+
+	/**
+	 * Discover the OAuth2 issuer and create a new OAuth2Strategy instance from
+	 * the OIDC configuration that is returned.
+	 *
+	 * This method will fetch the OIDC configuration from the issuer and create a
+	 * new OAuth2Strategy instance with the provided options and verify function.
+	 *
+	 * @param uri The URI of the issuer, this can be a full URL or just the domain
+	 * @param options The rest of the options to pass to the OAuth2Strategy constructor, clientId, clientSecret, redirectURI, and scopes are required.
+	 * @param verify The verify function to use with the OAuth2Strategy instance
+	 * @returns A new OAuth2Strategy instance
+	 * @example
+	 * ```ts
+	 * let strategy = await OAuth2Strategy.discover(
+	 *   "https://accounts.google.com",
+	 *   {
+	 *     clientId: "your-client-id",
+	 *     clientSecret: "your-client-secret",
+	 *     redirectURI: "https://your-app.com/auth/callback",
+	 *     scopes: ["openid", "email", "profile"],
+	 *   },
+	 *   async ({ tokens }) => {
+	 *     return getUserProfile(tokens.access_token);
+	 *   },
+	 * );
+	 */
+	static async discover<U, M extends OAuth2Strategy<U> = OAuth2Strategy<U>>(
+		this: new (
+			options: OAuth2Strategy.ConstructorOptions,
+			verify: Strategy.VerifyFunction<U, OAuth2Strategy.VerifyOptions>,
+		) => M,
+		uri: string | URL,
+		options: Pick<
+			OAuth2Strategy.ConstructorOptions,
+			"clientId" | "clientSecret" | "cookie" | "redirectURI" | "scopes"
+		> &
+			Partial<
+				Omit<
+					OAuth2Strategy.ConstructorOptions,
+					"clientId" | "clientSecret" | "cookie" | "redirectURI" | "scopes"
+				>
+			>,
+		verify: Strategy.VerifyFunction<U, OAuth2Strategy.VerifyOptions>,
 	) {
-		if (this.options.tokenRevocationEndpoint === undefined) {
-			throw new Error("Token revocation endpoint is not set");
+		// Parse the URI into a URL object
+		let url = new URL(uri);
+
+		if (!url.pathname.includes("well-known")) {
+			// Add the well-known path to the URL if it's not already there
+			url.pathname = url.pathname.endsWith("/")
+				? `${url.pathname}${WELL_KNOWN}`
+				: `${url.pathname}/${WELL_KNOWN}`;
 		}
 
-		let context = new Token.RevocationRequest.Context(token);
+		// Fetch the metadata from the issuer and validate it
+		let response = await fetch(url, {
+			headers: { Accept: "application/json" },
+		});
 
-		if (options.tokenType) context.setTokenTypeHint(options.tokenType);
+		// If the response is not OK, throw an error
+		if (!response.ok) throw new Error(`Failed to discover issuer at ${url}`);
 
-		if (this.options.authenticateWith === "http_basic_auth") {
-			context.authenticateWithHTTPBasicAuth(
-				this.options.clientId,
-				this.options.clientSecret,
-			);
-		} else if (this.options.authenticateWith === "request_body") {
-			context.authenticateWithRequestBody(
-				this.options.clientId,
-				this.options.clientSecret,
-			);
-		}
+		// Parse the response body
+		let parser = new ObjectParser(await response.json());
 
-		await Token.RevocationRequest.send(
-			this.options.tokenRevocationEndpoint,
-			context,
-			{ signal: options.signal },
+		// biome-ignore lint/complexity/noThisInStatic: This is need for subclasses
+		return new this(
+			{
+				authorizationEndpoint: new URL(parser.string("authorization_endpoint")),
+				tokenEndpoint: new URL(parser.string("token_endpoint")),
+				tokenRevocationEndpoint: parser.has("revocation_endpoint")
+					? new URL(parser.string("revocation_endpoint"))
+					: undefined,
+				codeChallengeMethod: parser.has("code_challenge_methods_supported")
+					? parser.array("code_challenge_methods_supported").includes("S256")
+						? CodeChallengeMethod.S256
+						: CodeChallengeMethod.Plain
+					: undefined,
+				...options,
+			},
+			verify,
 		);
 	}
 }
 
-export interface TokenErrorResponseBody {
-	error: string;
-	error_description?: string;
-	error_uri?: string;
-}
+export namespace OAuth2Strategy {
+	export interface VerifyOptions {
+		/** The request that triggered the verification flow */
+		request: Request;
+		/** The OAuth2 tokens retrivied from the identity provider */
+		tokens: OAuth2Tokens;
+	}
 
-export class OAuth2Error extends Error {
-	override name = "OAuth2Error";
+	export interface ConstructorOptions {
+		/**
+		 * The name of the cookie used to keep state and code verifier around.
+		 *
+		 * The OAuth2 flow requires generating a random state and code verifier, and
+		 * then checking that the state matches when the user is redirected back to
+		 * the application. This is done to prevent CSRF attacks.
+		 *
+		 * The state and code verifier are stored in a cookie, and this option
+		 * allows you to customize the name of that cookie if needed.
+		 * @default "oauth2"
+		 */
+		cookie?: string | (Omit<SetCookieInit, "value"> & { name: string });
 
-	public request: Request;
-	public description: string | null;
-	public uri: string | null;
+		/**
+		 * This is the Client ID of your application, provided to you by the Identity
+		 * Provider you're using to authenticate users.
+		 */
+		clientId: string;
+		/**
+		 * This is the Client Secret of your application, provided to you by the
+		 * Identity Provider you're using to authenticate users.
+		 */
+		clientSecret: string | null;
 
-	constructor(request: Request, body: Partial<TokenErrorResponseBody>) {
-		super(body.error ?? "");
-		this.request = request;
-		this.description = body.error_description ?? null;
-		this.uri = body.error_uri ?? null;
+		/**
+		 * The endpoint the Identity Provider asks you to send users to log in, or
+		 * authorize your application.
+		 */
+		authorizationEndpoint: URLConstructor;
+		/**
+		 * The endpoint the Identity Provider uses to let's you exchange an access
+		 * code for an access and refresh token.
+		 */
+		tokenEndpoint: URLConstructor;
+		/**
+		 * The URL of your application where the Identity Provider will redirect the
+		 * user after they've logged in or authorized your application.
+		 */
+		redirectURI: URLConstructor | null;
+
+		/**
+		 * The endpoint the Identity Provider uses to revoke an access or refresh
+		 * token, this can be useful to log out the user.
+		 */
+		tokenRevocationEndpoint?: URLConstructor;
+
+		/**
+		 * The scopes you want to request from the Identity Provider, this is a list
+		 * of strings that represent the permissions you want to request from the
+		 * user.
+		 */
+		scopes?: string[];
+
+		/**
+		 * The code challenge method to use when sending the authorization request.
+		 * This is used when the Identity Provider requires a code challenge to be
+		 * sent with the authorization request.
+		 * @default "CodeChallengeMethod.S256"
+		 */
+		codeChallengeMethod?: CodeChallengeMethod;
+
+		/**
+		 * The audience of the token to request from the Identity Provider. This is
+		 * used when the Identity Provider requires a specific audience to be set on
+		 * the token.
+		 *
+		 * This can be a string or an array of strings.
+		 */
+		audience?: string | string[];
 	}
 }
-
-export const OAuth2RequestError = OAuth2Request.Error;
-export type TokenResponseBody = Token.Response.Body;

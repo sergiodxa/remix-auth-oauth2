@@ -7,43 +7,26 @@ import {
 	mock,
 	test,
 } from "bun:test";
-import { createCookieSessionStorage, redirect } from "@remix-run/node";
-import { AuthenticateOptions, AuthorizationError } from "remix-auth";
-import {
-	OAuth2Error,
-	OAuth2Profile,
-	OAuth2Strategy,
-	OAuth2StrategyOptions,
-	OAuth2StrategyVerifyParams,
-} from ".";
-import { catchResponse } from "./test/helpers";
+import { Cookie, SetCookie } from "@mjackson/headers";
+import { http, HttpResponse } from "msw";
+import { setupServer } from "msw/native";
+import { OAuth2Strategy } from ".";
+import { StateStore } from "./lib/store";
 
-import { server } from "./test/mock";
-
-beforeAll(() => {
-	server.listen();
-});
-
-afterEach(() => {
-	server.resetHandlers();
-});
-
-afterAll(() => {
-	server.close();
-});
-
-const BASE_OPTIONS: AuthenticateOptions = {
-	name: "form",
-	sessionKey: "user",
-	sessionErrorKey: "error",
-	sessionStrategyKey: "strategy",
-};
+const server = setupServer(
+	http.post("https://example.app/token", async () => {
+		return HttpResponse.json({
+			access_token: "mocked",
+			expires_in: 3600,
+			refresh_token: "mocked",
+			scope: ["user:email", "user:profile"].join(" "),
+			token_type: "Bearer",
+		});
+	}),
+);
 
 describe(OAuth2Strategy.name, () => {
 	let verify = mock();
-	let sessionStorage = createCookieSessionStorage({
-		cookie: { secrets: ["s3cr3t"] },
-	});
 
 	let options = Object.freeze({
 		authorizationEndpoint: "https://example.app/authorize",
@@ -52,39 +35,41 @@ describe(OAuth2Strategy.name, () => {
 		clientSecret: "MY_CLIENT_SECRET",
 		redirectURI: "https://example.com/callback",
 		scopes: ["user:email", "user:profile"],
-		codeChallengeMethod: "plain",
-	} satisfies OAuth2StrategyOptions);
+	} satisfies OAuth2Strategy.ConstructorOptions);
 
 	interface User {
 		id: string;
 	}
 
-	interface TestProfile extends OAuth2Profile {
-		provider: "oauth2";
-	}
+	beforeAll(() => {
+		server.listen();
+	});
+
+	afterEach(() => {
+		server.resetHandlers();
+	});
+
+	afterAll(() => {
+		server.close();
+	});
 
 	test("should have the name `oauth2`", () => {
-		let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
+		let strategy = new OAuth2Strategy<User>(options, verify);
 		expect(strategy.name).toBe("oauth2");
 	});
 
 	test("redirects to authorization url if there's no state", async () => {
-		let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
+		let strategy = new OAuth2Strategy<User>(options, verify);
 
 		let request = new Request("https://remix.auth/login");
 
-		let response = await catchResponse(
-			strategy.authenticate(request, sessionStorage, BASE_OPTIONS),
-		);
+		let response = await catchResponse(strategy.authenticate(request));
 
 		// biome-ignore lint/style/noNonNullAssertion: This is a test
 		let redirect = new URL(response.headers.get("location")!);
 
-		let session = await sessionStorage.getSession(
-			response.headers.get("set-cookie"),
-		);
-
-		expect(response.status).toBe(302);
+		let setCookie = new SetCookie(response.headers.get("set-cookie") ?? "");
+		let params = new URLSearchParams(setCookie.value);
 
 		expect(redirect.pathname).toBe("/authorize");
 		expect(redirect.searchParams.get("response_type")).toBe("code");
@@ -92,282 +77,236 @@ describe(OAuth2Strategy.name, () => {
 		expect(redirect.searchParams.get("redirect_uri")).toBe(options.redirectURI);
 		expect(redirect.searchParams.has("state")).toBeTruthy();
 		expect(redirect.searchParams.get("scope")).toBe(options.scopes.join(" "));
+		expect(params.get("state")).toBe(redirect.searchParams.get("state"));
+		expect(redirect.searchParams.get("code_challenge_method")).toBe("S256");
+	});
 
-		expect(session.get("oauth2:state")).toBe(
-			redirect.searchParams.get("state"),
+	test("redirects with the audience if configured", async () => {
+		let strategy = new OAuth2Strategy<User>(
+			{ ...options, audience: "api.example.com" },
+			verify,
 		);
 
-		expect(session.get("oauth2:codeVerifier")).toBe(
-			redirect.searchParams.get("code_challenge"),
+		let request = new Request("https://remix.auth/login");
+
+		let response = await catchResponse(strategy.authenticate(request));
+
+		// biome-ignore lint/style/noNonNullAssertion: This is a test
+		let redirect = new URL(response.headers.get("location")!);
+
+		expect(redirect.searchParams.get("audience")).toBe("api.example.com");
+	});
+
+	test("redirects with multiple audience if configured as array", async () => {
+		let strategy = new OAuth2Strategy<User>(
+			{ ...options, audience: ["api.example.com", "internal.example.com"] },
+			verify,
 		);
 
-		expect(redirect.searchParams.get("code_challenge_method")).toBe("plain");
+		let request = new Request("https://remix.auth/login");
+
+		let response = await catchResponse(strategy.authenticate(request));
+
+		// biome-ignore lint/style/noNonNullAssertion: This is a test
+		let redirect = new URL(response.headers.get("location")!);
+
+		expect(redirect.searchParams.getAll("audience")).toEqual([
+			"api.example.com",
+			"internal.example.com",
+		]);
 	});
 
 	test("throws if there's no state in the session", async () => {
-		let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
+		let strategy = new OAuth2Strategy<User>(options, verify);
 
 		let request = new Request(
 			"https://example.com/callback?state=random-state&code=random-code",
 		);
 
-		let response = await catchResponse(
-			strategy.authenticate(request, sessionStorage, BASE_OPTIONS),
+		expect(strategy.authenticate(request)).rejects.toThrowError(
+			new ReferenceError("Missing state on cookie."),
 		);
-
-		expect(response.status).toBe(401);
-		await expect(response.json()).resolves.toEqual({
-			message: "Missing state on session.",
-		});
 	});
 
 	test("throws if the state in the url doesn't match the state in the session", async () => {
-		let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
+		let strategy = new OAuth2Strategy<User>(options, verify);
 
-		let session = await sessionStorage.getSession();
-		session.set("oauth2:state", "random-state");
+		let store = new StateStore();
+		store.set("random-state", "random-code-verifier");
+
+		let cookie = new Cookie();
+		cookie.set("oauth2", store.toString());
 
 		let request = new Request(
 			"https://example.com/callback?state=another-state&code=random-code",
-			{ headers: { cookie: await sessionStorage.commitSession(session) } },
+			{ headers: { Cookie: cookie.toString() } },
 		);
 
-		let response = await catchResponse(
-			strategy.authenticate(request, sessionStorage, BASE_OPTIONS),
+		expect(strategy.authenticate(request)).rejects.toThrowError(
+			new ReferenceError("State in URL doesn't match state in cookie."),
+		);
+	});
+
+	test("calls verify with the tokens and request", async () => {
+		let strategy = new OAuth2Strategy<User>(options, verify);
+
+		let store = new StateStore();
+		store.set("random-state", "random-code-verifier");
+
+		let cookie = new Cookie();
+		cookie.set(store.toSetCookie()?.name as string, store.toString());
+
+		let request = new Request(
+			"https://example.com/callback?state=random-state&code=random-code",
+			{ headers: { cookie: cookie.toString() } },
 		);
 
-		expect(response.status).toBe(401);
+		await strategy.authenticate(request);
 
-		let data = await response.json();
+		expect(verify).toHaveBeenCalled();
+	});
 
-		expect(data).toEqual({
-			message: "State in URL doesn't match state in session.",
+	test("returns the result of verify", () => {
+		let user = { id: "123" };
+		verify.mockResolvedValueOnce(user);
+
+		let strategy = new OAuth2Strategy<User>(options, verify);
+
+		let store = new StateStore();
+		store.set("random-state", "random-code-verifier");
+
+		let cookie = new Cookie();
+		cookie.set(store.toSetCookie()?.name as string, store.toString());
+
+		let request = new Request(
+			"https://example.com/callback?state=random-state&code=random-code",
+			{ headers: { cookie: cookie.toString() } },
+		);
+
+		expect(strategy.authenticate(request)).resolves.toEqual(user);
+	});
+
+	test("discovers provider configuration", async () => {
+		let handler = mock().mockImplementationOnce(() =>
+			HttpResponse.json({
+				authorization_endpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+				token_endpoint: "https://oauth2.googleapis.com/token",
+				revocation_endpoint: "https://oauth2.googleapis.com/revoke",
+				code_challenge_methods_supported: ["plain", "S256"],
+			}),
+		);
+
+		server.use(
+			http.get(
+				"https://accounts.google.com/.well-known/openid-configuration",
+				handler,
+			),
+		);
+
+		await OAuth2Strategy.discover(
+			"https://accounts.google.com",
+			{
+				clientId: options.clientId,
+				clientSecret: options.clientSecret,
+				redirectURI: options.redirectURI,
+				scopes: options.scopes,
+			},
+			verify,
+		);
+
+		expect(handler).toHaveBeenCalledTimes(1);
+	});
+
+	test("discover in a subclass returns the subclass", async () => {
+		class SubStrategy<U> extends OAuth2Strategy<U> {}
+
+		let handler = mock().mockImplementationOnce(() =>
+			HttpResponse.json({
+				authorization_endpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+				token_endpoint: "https://oauth2.googleapis.com/token",
+				revocation_endpoint: "https://oauth2.googleapis.com/revoke",
+				code_challenge_methods_supported: ["plain", "S256"],
+			}),
+		);
+
+		server.use(
+			http.get(
+				"https://accounts.google.com/.well-known/openid-configuration",
+				handler,
+			),
+		);
+
+		let strategy = await SubStrategy.discover<User, SubStrategy<User>>(
+			"https://accounts.google.com",
+			{
+				clientId: options.clientId,
+				clientSecret: options.clientSecret,
+				redirectURI: options.redirectURI,
+				scopes: options.scopes,
+			},
+			verify,
+		);
+
+		expect(strategy).toBeInstanceOf(SubStrategy);
+		expect(handler).toHaveBeenCalledTimes(1);
+	});
+
+	test("handles race condition of state and code verifier", async () => {
+		let verify = mock().mockImplementation(() => ({ id: "123" }));
+		let strategy = new OAuth2Strategy<User>(options, verify);
+
+		let responses = await Promise.all(
+			Array.from({ length: random() }, () =>
+				catchResponse(
+					strategy.authenticate(new Request("https://remix.auth/login")),
+				),
+			),
+		);
+
+		let setCookies: SetCookie[] = responses
+			.flatMap((res) => res.headers.getSetCookie())
+			.map((header) => new SetCookie(header));
+
+		let cookie = new Cookie();
+
+		for (let setCookie of setCookies) {
+			cookie.set(setCookie.name as string, setCookie.value as string);
+		}
+
+		let urls = setCookies.map((setCookie) => {
+			let params = new URLSearchParams(setCookie.value);
+			let url = new URL("https://remix.auth/callback");
+			url.searchParams.set("state", params.get("state") as string);
+			url.searchParams.set("code", crypto.randomUUID());
+			return url;
 		});
-	});
 
-	test("calls verify with the tokens, user profile, context and request", async () => {
-		let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
-
-		let session = await sessionStorage.getSession();
-		session.set("oauth2:state", "random-state");
-
-		let request = new Request(
-			"https://example.com/callback?state=random-state&code=random-code",
-			{
-				headers: { cookie: await sessionStorage.commitSession(session) },
-			},
+		await Promise.all(
+			urls.map((url) =>
+				strategy.authenticate(
+					new Request(url, { headers: { cookie: cookie.toString() } }),
+				),
+			),
 		);
 
-		let context = { test: "it works" };
-		await strategy
-			.authenticate(request, sessionStorage, {
-				...BASE_OPTIONS,
-				context,
-			})
-			.catch((error) => error);
-
-		expect(verify).toHaveBeenLastCalledWith({
-			tokens: {
-				access_token: "mocked",
-				expires_in: 3600,
-				refresh_token: "mocked",
-				scope: "user:email user:profile",
-				token_type: "Bearer",
-			},
-			profile: { provider: "oauth2" },
-			context,
-			request,
-		} satisfies OAuth2StrategyVerifyParams<
-			OAuth2Profile,
-			Record<string, unknown>
-		>);
-	});
-
-	test("returns the result of verify", async () => {
-		let user = { id: "123" };
-		verify.mockResolvedValueOnce(user);
-
-		let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
-
-		let session = await sessionStorage.getSession();
-		session.set("oauth2:state", "random-state");
-
-		let request = new Request(
-			"https://example.com/callback?state=random-state&code=random-code",
-			{ headers: { cookie: await sessionStorage.commitSession(session) } },
-		);
-
-		let response = await strategy.authenticate(
-			request,
-			sessionStorage,
-			BASE_OPTIONS,
-		);
-
-		expect(response).toEqual(user);
-	});
-
-	test("throws a response with user in session and redirect to /", async () => {
-		let user = { id: "123" };
-		verify.mockResolvedValueOnce(user);
-
-		let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
-
-		let session = await sessionStorage.getSession();
-		session.set("oauth2:state", "random-state");
-
-		let request = new Request(
-			"https://example.com/callback?state=random-state&code=random-code",
-			{
-				headers: { cookie: await sessionStorage.commitSession(session) },
-			},
-		);
-
-		let response = await catchResponse(
-			strategy.authenticate(request, sessionStorage, {
-				...BASE_OPTIONS,
-				successRedirect: "/",
-			}),
-		);
-
-		session = await sessionStorage.getSession(
-			response.headers.get("Set-Cookie"),
-		);
-
-		expect(response.headers.get("Location")).toBe("/");
-		expect(session.get("user")).toEqual(user);
-	});
-
-	test("pass error as cause on failure", async () => {
-		verify.mockRejectedValueOnce(new TypeError("Invalid credentials"));
-
-		let strategy = new OAuth2Strategy(options, verify);
-
-		let session = await sessionStorage.getSession();
-		session.set("oauth2:state", "random-state");
-
-		let request = new Request(
-			"https://example.com/callback?state=random-state&code=random-code",
-			{
-				headers: { cookie: await sessionStorage.commitSession(session) },
-			},
-		);
-
-		let result = await strategy
-			.authenticate(request, sessionStorage, {
-				...BASE_OPTIONS,
-				throwOnError: true,
-			})
-			.catch((error) => error);
-
-		expect(result).toEqual(new AuthorizationError("Invalid credentials"));
-		expect((result as AuthorizationError).cause).toEqual(
-			new TypeError("Invalid credentials"),
-		);
-	});
-
-	test("pass generate error from string on failure", async () => {
-		verify.mockRejectedValueOnce("Invalid credentials");
-
-		let strategy = new OAuth2Strategy(options, verify);
-
-		let session = await sessionStorage.getSession();
-		session.set("oauth2:state", "random-state");
-
-		let request = new Request(
-			"https://example.com/callback?state=random-state&code=random-code",
-			{
-				headers: { cookie: await sessionStorage.commitSession(session) },
-			},
-		);
-
-		let result = await strategy
-			.authenticate(request, sessionStorage, {
-				...BASE_OPTIONS,
-				throwOnError: true,
-			})
-			.catch((error) => error);
-
-		expect(result).toEqual(new AuthorizationError("Invalid credentials"));
-		expect((result as AuthorizationError).cause).toEqual(
-			new Error("Invalid credentials"),
-		);
-	});
-
-	test("creates Unknown error if thrown value is not Error or string", async () => {
-		verify.mockRejectedValueOnce({ message: "Invalid email address" });
-
-		let strategy = new OAuth2Strategy(options, verify);
-
-		let session = await sessionStorage.getSession();
-		session.set("oauth2:state", "random-state");
-
-		let request = new Request(
-			"https://example.com/callback?state=random-state&code=random-code",
-			{
-				headers: { cookie: await sessionStorage.commitSession(session) },
-			},
-		);
-
-		let result = await strategy
-			.authenticate(request, sessionStorage, {
-				...BASE_OPTIONS,
-				throwOnError: true,
-			})
-			.catch((error) => error);
-
-		expect(result).toEqual(new AuthorizationError("Unknown error"));
-		expect((result as AuthorizationError).cause).toEqual(
-			new Error(JSON.stringify({ message: "Invalid email address" }, null, 2)),
-		);
-	});
-
-	test("thrown response in verify callback should pass-through", async () => {
-		verify.mockRejectedValueOnce(redirect("/test"));
-
-		let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
-
-		let session = await sessionStorage.getSession();
-		session.set("oauth2:state", "random-state");
-
-		let request = new Request(
-			"https://example.com/callback?state=random-state&code=random-code",
-			{ headers: { cookie: await sessionStorage.commitSession(session) } },
-		);
-
-		let response = await strategy
-			.authenticate(request, sessionStorage, BASE_OPTIONS)
-			.then(() => {
-				throw new Error("Should have failed.");
-			})
-			.catch((error: unknown) => {
-				if (error instanceof Response) return error;
-				throw error;
-			});
-
-		expect(response.status).toEqual(302);
-		expect(response.headers.get("location")).toEqual("/test");
-	});
-
-	test("throws if there's an error in the url", async () => {
-		let strategy = new OAuth2Strategy<User, TestProfile>(options, verify);
-
-		let request = new Request(
-			"https://example.com/callback?error=invalid_request",
-		);
-
-		expect(() =>
-			strategy.authenticate(request, sessionStorage, {
-				...BASE_OPTIONS,
-				throwOnError: true,
-			}),
-		).toThrowError(
-			// @ts-expect-error - This is a test
-			new AuthorizationError("Error on authentication", {
-				cause: new OAuth2Error(request, {
-					error: "invalid_request",
-					error_description: undefined,
-				}),
-			}),
-		);
+		expect(verify).toHaveBeenCalledTimes(responses.length);
 	});
 });
+
+function isResponse(value: unknown): value is Response {
+	return value instanceof Response;
+}
+
+async function catchResponse(promise: Promise<unknown>) {
+	try {
+		await promise;
+		throw new Error("Should have failed.");
+	} catch (error) {
+		if (isResponse(error)) return error;
+		throw error;
+	}
+}
+
+function random(min = 1, max = 10) {
+	return Math.floor(Math.random() * (max - min + 1)) + min;
+}
