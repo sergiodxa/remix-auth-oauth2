@@ -10,14 +10,11 @@ import {
 	generateCodeVerifier,
 	generateState,
 } from "arctic";
-import createDebug from "debug";
 import { Strategy } from "remix-auth/strategy";
 import { redirect } from "./lib/redirect.js";
 import { StateStore } from "./lib/store.js";
 
 type URLConstructor = ConstructorParameters<typeof URL>[0];
-
-const debug = createDebug("OAuth2Strategy");
 
 const WELL_KNOWN = ".well-known/openid-configuration";
 
@@ -62,19 +59,12 @@ export class OAuth2Strategy<User> extends Strategy<
 	}
 
 	override async authenticate(request: Request): Promise<User> {
-		debug("Request URL", request.url);
-
 		let url = new URL(request.url);
 
 		let stateUrl = url.searchParams.get("state");
 
 		if (!stateUrl) {
-			debug("No state found in the URL, redirecting to authorization endpoint");
-
 			let { state, codeVerifier, url } = this.createAuthorizationURL();
-
-			debug("State", state);
-			debug("Code verifier", codeVerifier);
 
 			if (this.options.audience) {
 				if (Array.isArray(this.options.audience)) {
@@ -88,8 +78,6 @@ export class OAuth2Strategy<User> extends Strategy<
 				url.searchParams,
 				request,
 			).toString();
-
-			debug("Authorization URL", url.toString());
 
 			let store = StateStore.fromRequest(request, this.cookieName);
 			store.set(state, codeVerifier);
@@ -131,13 +119,10 @@ export class OAuth2Strategy<User> extends Strategy<
 			throw new ReferenceError("Missing code verifier on cookie.");
 		}
 
-		debug("Validating authorization code");
 		let tokens = await this.validateAuthorizationCode(code, codeVerifier);
 
-		debug("Verifying the user profile");
 		let user = await this.verify({ request, tokens });
 
-		debug("User authenticated");
 		return user;
 	}
 
