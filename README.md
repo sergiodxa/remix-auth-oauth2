@@ -45,6 +45,10 @@ authenticator.use(
 
       scopes: ["openid", "email", "profile"], // optional
       codeChallengeMethod: CodeChallengeMethod.S256, // optional
+      additionalParams: {
+        access_type: "offline",
+        duration: "permanent",
+      }, // optional
     },
     async ({ tokens, request }) => {
       // here you can use the params above to get the user and return it
@@ -97,6 +101,29 @@ let tokens = await strategy.refreshToken(refreshToken);
 ```
 
 The refresh token is part of the `tokens` object the verify function receives. How you store it to call `strategy.refreshToken` and what you do with the `tokens` object after it is up to you.
+
+### Additional Parameters
+
+You can pass additional parameters to the authorization request using the `additionalParams` option. This is useful for provider-specific parameters or custom requirements.
+
+```ts
+let strategy = new OAuth2Strategy(
+  {
+    // ... other options
+    additionalParams: {
+      access_type: "offline",        // Request refresh token
+      prompt: "consent",             // Force consent screen
+      duration: "temporary", // Reddit-like access duration
+    },
+  },
+  verify
+);
+```
+
+Common use cases:
+- **Google OAuth2**: Use `access_type: "offline"` to request refresh tokens
+- **Reddit OAuth2**: Use `duration: "permanent"` to handle token duration
+- **Custom providers**: Add any provider-specific parameters
 
 The most common approach would be to store the refresh token in the user data and then update the session after refreshing the token.
 
