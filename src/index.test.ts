@@ -116,6 +116,30 @@ describe(OAuth2Strategy.name, () => {
 		]);
 	});
 
+	test("redirects with additional parameters if configured", async () => {
+		let strategy = new OAuth2Strategy<User>(
+			{
+				...options,
+				additionalParams: {
+					access_type: "offline",
+					prompt: "consent",
+					include_granted_scopes: "true",
+				},
+			},
+			verify,
+		);
+
+		let request = new Request("https://remix.auth/login");
+
+		let response = await catchResponse(strategy.authenticate(request));
+
+		// biome-ignore lint/style/noNonNullAssertion: This is a test
+		let redirect = new URL(response.headers.get("location")!);
+
+		expect(redirect.searchParams.get("access_type")).toBe("offline");
+		expect(redirect.searchParams.get("duration")).toBe("permanent");
+	});
+
 	test("throws if there's no state in the session", async () => {
 		let strategy = new OAuth2Strategy<User>(options, verify);
 
