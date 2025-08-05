@@ -162,6 +162,12 @@ export class OAuth2Strategy<User> extends Strategy<
 		params: URLSearchParams,
 		request: Request,
 	): URLSearchParams {
+		if (this.options.additionalParams) {
+			for (let [key, value] of Object.entries(this.options.additionalParams)) {
+				params.append(key, value);
+			}
+		}
+
 		return new URLSearchParams(params);
 	}
 
@@ -365,5 +371,23 @@ export namespace OAuth2Strategy {
 		 * This can be a string or an array of strings.
 		 */
 		audience?: string | string[];
+
+		/**
+		 * Additional parameters to include in the authorization request URL.
+		 * This allows you to pass custom parameters that are specific to your
+		 * OAuth provider or use case.
+		 *
+		 * @example
+		 * ```ts
+		 * {
+		 *   additionalParams: {
+		 *     access_type: "offline",
+		 *     prompt: "consent",
+		 *     include_granted_scopes: "true"
+		 *   }
+		 * }
+		 * ```
+		 */
+		additionalParams?: Record<string, string>;
 	}
 }
