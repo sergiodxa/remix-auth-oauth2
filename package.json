@@ -60,7 +60,7 @@
 		"@biomejs/biome": "^2.0.4",
 		"@total-typescript/tsconfig": "^1.0.4",
 		"@types/bun": "^1.1.14",
-		"msw": "^2.6.6",
+		"msw": "^3.0.1",
 		"remix-auth": "^4.0.0",
 		"typedoc": "^0.28.0",
 		"typedoc-plugin-mdn-links": "^5.0.1",
