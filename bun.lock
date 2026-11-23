@@ -15,13 +15,13 @@
         "@total-typescript/tsconfig": "^1.0.4",
         "@types/bun": "^1.1.14",
         "msw": "^3.0.1",
-        "remix-auth": "^4.0.0",
+        "remix-auth": "^5.0.0",
         "typedoc": "^0.28.0",
         "typedoc-plugin-mdn-links": "^5.0.1",
         "typescript": "^7.0.2",
       },
       "peerDependencies": {
-        "remix-auth": "^4.0.0",
+        "remix-auth": "^5.0.0",
       },
     },
   },
@@ -91,6 +91,14 @@
     "@oslojs/encoding": ["@oslojs/encoding@1.1.0", "", {}, "sha512-70wQhgYmndg4GCPxPPxPGevRKqTIJ2Nh4OkiMWmDAVYsTQ+Ta7Sq+rPevXyXGdzr30/qZBnyOalCszoMxlyldQ=="],
 
     "@oslojs/jwt": ["@oslojs/jwt@0.2.0", "", { "dependencies": { "@oslojs/encoding": "0.4.1" } }, "sha512-bLE7BtHrURedCn4Mco3ma9L4Y1GR2SMBuIvjWr7rmQ4/W/4Jy70TIAgZ+0nIlk0xHz1vNP8x8DCns45Sb2XRbg=="],
+
+    "@remix-run/headers": ["@remix-run/headers@1.1.1", "", {}, "sha512-pIUErNdqYYx8zCVqMcLfZbrXC8BDufMliG2wvaYy57LJKz5OvkYHrqXl5yMlDcM/dac+DpM36A4nOzGx60ZfGg=="],
+
+    "@remix-run/html-template": ["@remix-run/html-template@1.0.0", "", {}, "sha512-XX2VgVMf4d8Mk3bvcDkHqHQEfXLjny8SE5QApXaTbc7F2BpuQbtTVji2d8Aqlo7U4V5ZGOPZqdbGhwjI2Iknqw=="],
+
+    "@remix-run/mime": ["@remix-run/mime@1.0.0", "", {}, "sha512-oOPL/TMsNIbfNpSzjtZhTmIeqfgCYM3mQOYs13UsHKTmgLRgKfiNz4B1q/SN3juhCrtPwDwjwUEx1Vn8vp9SEg=="],
+
+    "@remix-run/response": ["@remix-run/response@1.0.3", "", { "dependencies": { "@remix-run/headers": "^1.1.1", "@remix-run/html-template": "^1.0.0", "@remix-run/mime": "^1.0.0" } }, "sha512-uq/1JbZ8FaUyZhL+atu48gRNLg4dOrwp0071yjANfKTv50kSTtq0y8gha/Rmpeja5S6P+eRIr9yZz9XGHmGf3A=="],
 
     "@shikijs/engine-oniguruma": ["@shikijs/engine-oniguruma@3.23.0", "", { "dependencies": { "@shikijs/types": "3.23.0", "@shikijs/vscode-textmate": "^10.0.2" } }, "sha512-1nWINwKXxKKLqPibT5f4pAFLej9oZzQTsby8942OTlsJzOBZ0MWKiwzMsd+jhzu8YPCHAswGnnN1YtQfirL35g=="],
 
@@ -270,7 +278,7 @@
 
     "punycode.js": ["punycode.js@2.3.1", "", {}, "sha512-uxFIHU0YlHYhDQtV4R9J6a52SLx28BCjT+4ieh7IGbgwVJWO+km431c4yRlREUAsAmt/uMjQUyQHNEPf0M39CA=="],
 
-    "remix-auth": ["remix-auth@4.1.0", "", {}, "sha512-Xdy42clt+g79GCn+Wl1+B6S/yWnvrStnk62vo1pGuRuUwHC+pjmeEE52ZRkRPuhLGqsQnoDD9TVz/wfEJAGF8g=="],
+    "remix-auth": ["remix-auth@5.0.0", "", { "dependencies": { "@edgefirst-dev/data": "^0.0.4", "@remix-run/headers": "^1.0.1", "@remix-run/response": "^1.0.2", "type-fest": "^5.2.0" } }, "sha512-Mhv2Vmf6/wxlRNK6wS6M33Ubkd3wc8OpZ/se4pFfxJks3hzbsh8zp6emMpE6tTuJ1KiHsKilMBs708zwkJCNJA=="],
 
     "require-directory": ["require-directory@2.1.1", "", {}, "sha512-fGxEI7+wsG9xrvdjsrlmL22OMTTiHRwAMroiEeMgq8gzoLC/PQr7RsRDSTLUg/bZAZtF+TVIkHc6/4RIKrui+Q=="],
 
